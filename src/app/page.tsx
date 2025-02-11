@@ -1,6 +1,7 @@
 import {
   Hero,
   Features,
+  UploadSection,
   Benefits,
   Pricing,
   FAQ,
@@ -11,6 +12,7 @@ export default function Home() {
     <>
       <Hero />
       <Features />
+      <UploadSection />
       <Benefits />
       <Pricing />
       <FAQ />
