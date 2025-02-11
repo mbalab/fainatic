@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { FileUpload } from '@/components/features/upload';
 
 export const Hero = () => {
   return (
@@ -28,6 +29,9 @@ export const Hero = () => {
               >
                 Learn more <span aria-hidden="true">→</span>
               </Link>
+            </div>
+            <div className="mt-10">
+              <FileUpload />
             </div>
           </div>
 
