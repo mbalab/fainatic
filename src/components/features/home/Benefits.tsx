@@ -42,7 +42,7 @@ export const Benefits = () => {
             {benefits.map((benefit) => (
               <div
                 key={benefit.title}
-                className="flex flex-col rounded-3xl bg-white p-8 ring-1 ring-gray-200"
+                className="flex flex-col rounded-3xl bg-gray-50 p-8 ring-1 ring-gray-200 hover:bg-gray-100 transition-colors duration-200"
               >
                 <dt className="text-xl font-semibold leading-7 text-gray-900">
                   {benefit.title}

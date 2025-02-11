@@ -23,7 +23,7 @@ export const Features = () => {
   ];
 
   return (
-    <div className="py-24 sm:py-32">
+    <div className="py-24 sm:py-32 bg-gray-50">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-base font-semibold leading-7 text-blue-600">
@@ -38,7 +38,7 @@ export const Features = () => {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="flex flex-col items-center text-center"
+                className="flex flex-col items-center text-center bg-white rounded-2xl p-8 shadow-sm ring-1 ring-gray-200"
               >
                 <div className="mb-6">
                   <Image

@@ -33,7 +33,7 @@ export const Pricing = () => {
   ];
 
   return (
-    <div className="py-24 sm:py-32">
+    <div className="py-24 sm:py-32 bg-gray-50">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-base font-semibold leading-7 text-blue-600">
@@ -47,7 +47,7 @@ export const Pricing = () => {
           {tiers.map((tier) => (
             <div
               key={tier.id}
-              className={`flex flex-col justify-between rounded-3xl bg-white p-8 ring-1 ring-gray-200 xl:p-10 ${
+              className={`flex flex-col justify-between rounded-3xl bg-white p-8 ring-1 xl:p-10 ${
                 tier.highlighted
                   ? 'ring-2 ring-blue-600 shadow-xl'
                   : 'ring-1 ring-gray-200'
