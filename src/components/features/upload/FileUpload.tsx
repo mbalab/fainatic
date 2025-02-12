@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { AnalysisResult } from './types';
+import { useDropzone, FileRejection } from 'react-dropzone';
+import type { AnalysisResult } from '@/types';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -13,15 +13,22 @@ type FileUploadProps = {
   onAnalysisComplete: (analysis: AnalysisResult) => void;
 };
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
   const [error, setError] = useState<UploadError>(null);
   const [status, setStatus] = useState<UploadStatus>('idle');
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+
+  const handleUploadError = () => {
+    setError('upload');
+    setStatus('error');
+  };
 
   const onDrop = useCallback(
-    async (acceptedFiles: File[], rejectedFiles: any[]) => {
+    async (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
       if (rejectedFiles.length > 0) {
         const rejection = rejectedFiles[0];
-        if (rejection.file.size > MAX_FILE_SIZE) {
+        if (rejection.errors.some((e) => e.code === 'file-too-large')) {
           setError('size');
           setStatus('error');
           return;
@@ -36,29 +43,26 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
           setError(null);
           setStatus('uploading');
 
-          // Имитация загрузки
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          const formData = new FormData();
+          formData.append('file', acceptedFiles[0]);
+
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to analyze file');
+          }
 
           setStatus('analyzing');
-          // Имитация анализа
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-
-          // Устанавливаем тестовые данные анализа
-          const analysisData: AnalysisResult = {
-            totalTransactions: 42,
-            totalIncome: 5750.5,
-            totalExpenses: 3280.75,
-            dateRange: {
-              from: '2024-01-01',
-              to: '2024-01-31',
-            },
-          };
-
-          onAnalysisComplete(analysisData);
+          setAnalysis(data.analysis);
+          onAnalysisComplete(data.analysis);
           setStatus('success');
-        } catch (error) {
-          setError('upload');
-          setStatus('error');
+        } catch {
+          handleUploadError();
         }
       }
     },
@@ -69,7 +73,9 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
     onDrop,
     accept: {
       'text/csv': ['.csv'],
-      'application/vnd.ms-excel': ['.xls'],
+      'text/plain': ['.csv'],
+      'application/csv': ['.csv'],
+      'application/vnd.ms-excel': ['.csv', '.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [
         '.xlsx',
       ],
@@ -200,25 +206,27 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
                   <span className="text-sm text-gray-500">
                     Total Transactions
                   </span>
-                  <span className="text-sm font-medium">42</span>
+                  <span className="text-sm font-medium">
+                    {analysis?.totalTransactions}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Total Income</span>
                   <span className="text-sm font-medium text-green-600">
-                    $5,750.50
+                    ${analysis?.income.total.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Total Expenses</span>
                   <span className="text-sm font-medium text-red-600">
-                    $3,280.75
+                    ${analysis?.expenses.total.toFixed(2)}
                   </span>
                 </div>
                 <div className="pt-4 border-t border-gray-200">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">Date Range</span>
                     <span className="text-sm font-medium">
-                      2024-01-01 - 2024-01-31
+                      {analysis?.dateRange.from} - {analysis?.dateRange.to}
                     </span>
                   </div>
                 </div>
