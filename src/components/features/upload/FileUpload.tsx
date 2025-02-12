@@ -8,9 +8,25 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 type UploadError = 'size' | 'type' | 'upload' | null;
 type UploadStatus = 'idle' | 'uploading' | 'analyzing' | 'success' | 'error';
 
-export const FileUpload = () => {
+// Добавим тип для результатов анализа
+type AnalysisResult = {
+  totalTransactions: number;
+  totalIncome: number;
+  totalExpenses: number;
+  dateRange: {
+    from: string;
+    to: string;
+  };
+};
+
+type FileUploadProps = {
+  onAnalysisComplete: (analysis: AnalysisResult) => void;
+};
+
+export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
   const [error, setError] = useState<UploadError>(null);
   const [status, setStatus] = useState<UploadStatus>('idle');
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[], rejectedFiles: any[]) => {
@@ -38,6 +54,19 @@ export const FileUpload = () => {
           // Имитация анализа
           await new Promise((resolve) => setTimeout(resolve, 3000));
 
+          // Устанавливаем тестовые данные анализа
+          const analysisData: AnalysisResult = {
+            totalTransactions: 42,
+            totalIncome: 5750.5,
+            totalExpenses: 3280.75,
+            dateRange: {
+              from: '2024-01-01',
+              to: '2024-01-31',
+            },
+          };
+
+          setAnalysis(analysisData);
+          onAnalysisComplete(analysisData);
           setStatus('success');
         } catch (error) {
           setError('upload');
@@ -45,7 +74,7 @@ export const FileUpload = () => {
         }
       }
     },
-    []
+    [onAnalysisComplete]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -159,7 +188,7 @@ export const FileUpload = () => {
               </p>
             </div>
           </div>
-        ) : status === 'success' ? (
+        ) : status === 'success' && analysis ? (
           <div className="space-y-3">
             <svg
               className="mx-auto h-12 w-12 text-green-400"
@@ -177,8 +206,37 @@ export const FileUpload = () => {
             <p className="text-sm font-medium text-green-600">
               Analysis complete!
             </p>
-            <div className="mt-4 max-w-xs mx-auto">
-              {/* Здесь будет компонент с результатами анализа */}
+            <div className="mt-6 max-w-sm mx-auto bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-4 py-5 sm:p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">
+                    Total Transactions
+                  </span>
+                  <span className="text-sm font-medium">
+                    {analysis.totalTransactions}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Total Income</span>
+                  <span className="text-sm font-medium text-green-600">
+                    ${analysis.totalIncome.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Total Expenses</span>
+                  <span className="text-sm font-medium text-red-600">
+                    ${analysis.totalExpenses.toFixed(2)}
+                  </span>
+                </div>
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Date Range</span>
+                    <span className="text-sm font-medium">
+                      {analysis.dateRange.from} - {analysis.dateRange.to}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
