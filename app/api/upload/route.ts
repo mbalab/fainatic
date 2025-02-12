@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeWithGPT4 } from '@/utils/openai';
 import type { AnalysisResult } from '@/types';
+import { logger } from '@/utils/logger';
 
 export const POST = async (request: NextRequest) => {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
-    console.log('File type:', file.type); // Временно для отладки
-    console.log('File name:', file.name); // Временно для отладки
+    logger.debug('File type:', file.type);
+    logger.debug('File name:', file.name);
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -35,9 +36,9 @@ export const POST = async (request: NextRequest) => {
     const fileContent = await file.text();
 
     try {
-      console.log('File content:', fileContent.substring(0, 200)); // Первые 200 символов
+      logger.debug('File content:', fileContent.substring(0, 200));
       const analysis = await analyzeWithGPT4(fileContent, file.type);
-      console.log('Analysis result:', analysis); // Результат анализа
+      logger.debug('Analysis result:', analysis);
 
       const analysisResult: AnalysisResult = {
         totalTransactions: analysis.metrics.totalTransactions,
