@@ -6,7 +6,7 @@ import { useDropzone } from 'react-dropzone';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 type UploadError = 'size' | 'type' | 'upload' | null;
-type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
+type UploadStatus = 'idle' | 'uploading' | 'analyzing' | 'success' | 'error';
 
 export const FileUpload = () => {
   const [error, setError] = useState<UploadError>(null);
@@ -27,9 +27,22 @@ export const FileUpload = () => {
       }
 
       if (acceptedFiles.length > 0) {
-        setError(null);
-        setStatus('uploading');
-        // TODO: Добавим загрузку файла позже
+        try {
+          setError(null);
+          setStatus('uploading');
+
+          // Имитация загрузки
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          setStatus('analyzing');
+          // Имитация анализа
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+
+          setStatus('success');
+        } catch (error) {
+          setError('upload');
+          setStatus('error');
+        }
       }
     },
     []
@@ -57,12 +70,19 @@ export const FileUpload = () => {
           ? 'border-red-500 bg-red-50/50'
           : status === 'uploading'
             ? 'border-blue-500 bg-blue-50/50'
-            : isDragActive
+            : status === 'analyzing'
               ? 'border-blue-500 bg-blue-50/50'
-              : 'border-gray-300 hover:border-blue-400'
+              : status === 'success'
+                ? 'border-green-500 bg-green-50/50'
+                : isDragActive
+                  ? 'border-blue-500 bg-blue-50/50'
+                  : 'border-gray-300 hover:border-blue-400'
       }`}
     >
-      <input {...getInputProps()} disabled={status === 'uploading'} />
+      <input
+        {...getInputProps()}
+        disabled={status === 'uploading' || status === 'analyzing'}
+      />
       <div className="text-center">
         {error ? (
           <div className="space-y-2">
@@ -110,6 +130,55 @@ export const FileUpload = () => {
               <div className="h-1 w-full bg-blue-100 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-600 rounded-full w-full animate-progress" />
               </div>
+            </div>
+          </div>
+        ) : status === 'analyzing' ? (
+          <div className="space-y-3">
+            <svg
+              className="mx-auto h-12 w-12 text-blue-400 animate-pulse"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <p className="text-sm font-medium text-blue-600">
+              Analyzing your data...
+            </p>
+            <div className="max-w-xs mx-auto space-y-2">
+              <div className="h-1 w-full bg-blue-100 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-600 rounded-full w-full animate-progress" />
+              </div>
+              <p className="text-xs text-blue-500">
+                Our AI is processing your transactions
+              </p>
+            </div>
+          </div>
+        ) : status === 'success' ? (
+          <div className="space-y-3">
+            <svg
+              className="mx-auto h-12 w-12 text-green-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className="text-sm font-medium text-green-600">
+              Analysis complete!
+            </p>
+            <div className="mt-4 max-w-xs mx-auto">
+              {/* Здесь будет компонент с результатами анализа */}
             </div>
           </div>
         ) : (
