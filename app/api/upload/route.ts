@@ -18,48 +18,44 @@ export const POST = async (request: NextRequest) => {
     const allowedTypes = [
       'text/csv',
       'application/csv',
-      'text/plain', // Добавим для .csv файлов
+      'text/plain',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
     ];
 
-    // Проверяем и расширение файла
-    const isCSV = file.name.toLowerCase().endsWith('.csv');
+    // Проверяем расширение файла
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    const isAllowedExtension = [
+      'csv',
+      'xls',
+      'xlsx',
+      'pdf',
+      'jpg',
+      'jpeg',
+      'png',
+    ].includes(fileExtension || '');
 
-    if (!allowedTypes.includes(file.type) && !isCSV) {
+    if (!allowedTypes.includes(file.type) && !isAllowedExtension) {
       return NextResponse.json(
         { error: `Unsupported file type: ${file.type}` },
         { status: 422 }
       );
     }
 
-    const fileContent = await file.text();
-
     try {
+      const fileContent = await file.text();
       logger.debug('File content:', fileContent.substring(0, 200));
+
       const analysis = await analyzeWithGPT4(fileContent, file.type);
       logger.debug('Analysis result:', analysis);
-
-      const analysisResult: AnalysisResult = {
-        totalTransactions: analysis.metrics.totalTransactions,
-        income: {
-          total: analysis.metrics.income.total,
-          categories: analysis.metrics.income.categories,
-        },
-        expenses: {
-          total: analysis.metrics.expenses.total,
-          categories: analysis.metrics.expenses.categories,
-        },
-        dateRange: {
-          from: analysis.metrics.dateRange?.from || '',
-          to: analysis.metrics.dateRange?.to || '',
-        },
-      };
 
       return NextResponse.json({
         message: 'File analyzed successfully',
         fileName: file.name,
-        analysis: analysisResult,
+        analysis,
       });
     } catch (error) {
       const errorMessage =
