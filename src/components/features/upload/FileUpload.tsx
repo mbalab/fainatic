@@ -13,11 +13,9 @@ type FileUploadProps = {
   onAnalysisComplete: (analysis: AnalysisResult) => void;
 };
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
   const [error, setError] = useState<UploadError>(null);
   const [status, setStatus] = useState<UploadStatus>('idle');
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
 
   const handleUploadError = () => {
     setError('upload');
@@ -51,17 +49,20 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
             body: formData,
           });
 
-          const data = await response.json();
-
           if (!response.ok) {
-            throw new Error(data.error || 'Failed to analyze file');
+            throw new Error('Failed to upload file');
           }
 
           setStatus('analyzing');
-          setAnalysis(data.analysis);
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
           onAnalysisComplete(data.analysis);
           setStatus('success');
-        } catch {
+        } catch (error) {
           handleUploadError();
         }
       }
@@ -73,13 +74,14 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
     onDrop,
     accept: {
       'text/csv': ['.csv'],
-      'text/plain': ['.csv'],
-      'application/csv': ['.csv'],
-      'application/vnd.ms-excel': ['.csv', '.xls'],
+      'text/plain': ['.csv', '.txt'],
+      'application/vnd.ms-excel': ['.xls', '.csv'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [
         '.xlsx',
       ],
       'application/pdf': ['.pdf'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
     },
     maxFiles: 1,
     maxSize: MAX_FILE_SIZE,
@@ -125,10 +127,12 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
             <p className="text-sm font-medium text-red-600">
               {error === 'size'
                 ? 'File is too large (max 10MB)'
-                : 'Unsupported file format'}
+                : error === 'type'
+                  ? 'Unsupported file format'
+                  : 'Upload error'}
             </p>
             <p className="text-xs text-red-500">
-              Please try again with a valid file
+              Please try uploading a different file
             </p>
           </div>
         ) : status === 'uploading' ? (
@@ -178,63 +182,12 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
                 <div className="h-full bg-blue-600 rounded-full w-full animate-progress" />
               </div>
               <p className="text-xs text-blue-500">
-                Our AI is processing your transactions
+                AI is processing your transactions
               </p>
             </div>
           </div>
-        ) : status === 'success' ? (
-          <div className="space-y-3">
-            <svg
-              className="mx-auto h-12 w-12 text-green-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-sm font-medium text-green-600">
-              Analysis complete!
-            </p>
-            <div className="mt-6 max-w-sm mx-auto bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-4 py-5 sm:p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">
-                    Total Transactions
-                  </span>
-                  <span className="text-sm font-medium">
-                    {analysis?.totalTransactions}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Total Income</span>
-                  <span className="text-sm font-medium text-green-600">
-                    ${analysis?.income.total.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Total Expenses</span>
-                  <span className="text-sm font-medium text-red-600">
-                    ${analysis?.expenses.total.toFixed(2)}
-                  </span>
-                </div>
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Date Range</span>
-                    <span className="text-sm font-medium">
-                      {analysis?.dateRange.from} - {analysis?.dateRange.to}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         ) : (
-          <div className="text-center">
+          <div className="space-y-4">
             <svg
               className="mx-auto h-12 w-12 text-gray-400"
               fill="none"
@@ -249,33 +202,18 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="mt-4 text-sm text-gray-600">
-              {isDragActive
-                ? 'Drop your bank statement here'
-                : 'Drag and drop your bank statement, or click to select'}
-            </p>
-            <p className="mt-2 text-xs text-gray-500">
-              Supported formats: CSV, XLS/XLSX, PDF
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-900">
+                Drag and drop your file here or click to browse
+              </p>
+              <p className="text-xs text-gray-500">
+                Supported formats: CSV, Excel, PDF, JPG, PNG
+              </p>
+              <p className="text-xs text-gray-500">Maximum file size: 10MB</p>
+            </div>
           </div>
         )}
       </div>
-      <style jsx>{`
-        @keyframes progress {
-          0% {
-            transform: translateX(-100%);
-          }
-          50% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(100%);
-          }
-        }
-        .animate-progress {
-          animation: progress 2s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };
