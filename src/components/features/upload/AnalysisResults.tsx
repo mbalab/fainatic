@@ -35,13 +35,13 @@ export const AnalysisResults = ({ data }: { data: AnalysisResult }) => {
       <div className="space-y-8">
         {/* Основные метрики */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Summary</h3>
+          <h3 className="text-lg font-medium text-gray-900">Summary</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="bg-white p-4 rounded-lg shadow-sm">
               <h4 className="text-sm text-gray-500">Income Categories</h4>
               {data.income.categories.map((cat) => (
                 <div key={cat.name} className="flex justify-between mt-2">
-                  <span className="text-sm">{cat.name}</span>
+                  <span className="text-sm text-gray-900">{cat.name}</span>
                   <span className="text-sm font-medium text-green-600">
                     ${cat.amount.toFixed(2)}
                   </span>
@@ -52,7 +52,7 @@ export const AnalysisResults = ({ data }: { data: AnalysisResult }) => {
               <h4 className="text-sm text-gray-500">Expense Categories</h4>
               {data.expenses.categories.map((cat) => (
                 <div key={cat.name} className="flex justify-between mt-2">
-                  <span className="text-sm">{cat.name}</span>
+                  <span className="text-sm text-gray-900">{cat.name}</span>
                   <span className="text-sm font-medium text-red-600">
                     ${cat.amount.toFixed(2)}
                   </span>
