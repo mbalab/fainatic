@@ -3,74 +3,76 @@ import { analyzeWithGPT4 } from '@/utils/openai';
 import type { AnalysisResult } from '@/types';
 import { logger } from '@/utils/logger';
 
-export const POST = async (request: NextRequest) => {
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+const SUPPORTED_FILE_TYPES = new Set([
+  'text/csv',
+  'text/plain',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+]);
+
+export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const filename = formData.get('filename') as string;
+    const type = formData.get('type') as string;
 
-    logger.debug('File type:', file.type);
-    logger.debug('File name:', file.name);
-
-    if (!file || !(file instanceof File)) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    const allowedTypes = [
-      'text/csv',
-      'application/csv',
-      'text/plain',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/pdf',
-      'image/jpeg',
-      'image/png',
-    ];
-
-    // Проверяем расширение файла
-    const fileExtension = file.name.split('.').pop()?.toLowerCase();
-    const isAllowedExtension = [
-      'csv',
-      'xls',
-      'xlsx',
-      'pdf',
-      'jpg',
-      'jpeg',
-      'png',
-    ].includes(fileExtension || '');
-
-    if (!allowedTypes.includes(file.type) && !isAllowedExtension) {
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: `Unsupported file type: ${file.type}` },
-        { status: 422 }
+        { error: 'File size exceeds 10MB limit' },
+        { status: 400 }
       );
     }
+
+    // Validate file type
+    if (!SUPPORTED_FILE_TYPES.has(type)) {
+      return NextResponse.json(
+        { error: 'UNSUPPORTED_FILE_TYPE' },
+        { status: 400 }
+      );
+    }
+
+    // Convert file to buffer
+    const buffer = Buffer.from(await file.arrayBuffer());
 
     try {
-      const fileContent = await file.text();
-      logger.debug('File content:', fileContent.substring(0, 200));
-
-      const analysis = await analyzeWithGPT4(fileContent, file.type);
-      logger.debug('Analysis result:', analysis);
-
-      return NextResponse.json({
-        message: 'File analyzed successfully',
-        fileName: file.name,
-        analysis,
-      });
+      const analysis = await analyzeWithGPT4(buffer, type, filename);
+      return NextResponse.json({ analysis });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json(
-        { error: `Failed to analyze file: ${errorMessage}` },
-        { status: 422 }
-      );
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+
+        // Handle known errors
+        switch (errorMessage) {
+          case 'RATE_LIMIT_EXCEEDED':
+          case 'INVALID_ANALYSIS_RESULT':
+          case 'ANALYSIS_FAILED':
+          case 'INVALID_STATEMENT_FORMAT':
+          case 'ANALYSIS_TIMEOUT':
+            return NextResponse.json({ error: errorMessage }, { status: 400 });
+          default:
+            logger.error('Unknown analysis error:', error);
+            return NextResponse.json(
+              { error: 'ANALYSIS_FAILED' },
+              { status: 500 }
+            );
+        }
+      }
+
+      return NextResponse.json({ error: 'ANALYSIS_FAILED' }, { status: 500 });
     }
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { error: `Failed to process file: ${errorMessage}` },
-      { status: 500 }
-    );
+    logger.error('Upload error:', error);
+    return NextResponse.json({ error: 'UPLOAD_FAILED' }, { status: 500 });
   }
-};
+}

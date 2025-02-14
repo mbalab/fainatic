@@ -6,20 +6,50 @@ import type { AnalysisResult } from '@/types';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-type UploadError = 'size' | 'type' | 'upload' | null;
+type UploadError =
+  | 'size'
+  | 'type'
+  | 'upload'
+  | 'RATE_LIMIT_EXCEEDED'
+  | 'INVALID_ANALYSIS_RESULT'
+  | 'ANALYSIS_FAILED'
+  | 'UNSUPPORTED_FILE_TYPE'
+  | 'UPLOAD_FAILED'
+  | null;
 type UploadStatus = 'idle' | 'uploading' | 'analyzing' | 'success' | 'error';
 
 type FileUploadProps = {
   onAnalysisComplete: (analysis: AnalysisResult) => void;
+  onError: (error: string) => void;
 };
 
-export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
+export const FileUpload = ({
+  onAnalysisComplete,
+  onError,
+}: FileUploadProps) => {
   const [error, setError] = useState<UploadError>(null);
   const [status, setStatus] = useState<UploadStatus>('idle');
+
+  const getContainerStyles = () => {
+    if (error) {
+      return 'border-red-500 bg-red-50/50';
+    }
+    if (status === 'uploading' || status === 'analyzing') {
+      return 'border-blue-500 bg-blue-50/50';
+    }
+    if (status === 'success') {
+      return 'border-green-500 bg-green-50/50';
+    }
+    if (isDragActive) {
+      return 'border-blue-500 bg-blue-50/50';
+    }
+    return 'border-gray-300 hover:border-blue-400';
+  };
 
   const handleUploadError = () => {
     setError('upload');
     setStatus('error');
+    onError('upload');
   };
 
   const onDrop = useCallback(
@@ -29,10 +59,12 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
         if (rejection.errors.some((e) => e.code === 'file-too-large')) {
           setError('size');
           setStatus('error');
+          onError('size');
           return;
         }
         setError('type');
         setStatus('error');
+        onError('type');
         return;
       }
 
@@ -43,31 +75,56 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
 
           const formData = new FormData();
           formData.append('file', acceptedFiles[0]);
+          formData.append('filename', acceptedFiles[0].name);
+          formData.append('type', acceptedFiles[0].type);
 
           const response = await fetch('/api/upload', {
             method: 'POST',
             body: formData,
           });
 
-          if (!response.ok) {
-            throw new Error('Failed to upload file');
+          const data = await response.json();
+
+          if (!response.ok || data.error) {
+            throw new Error(data.error || 'Failed to upload file');
           }
 
           setStatus('analyzing');
-          const data = await response.json();
-
-          if (data.error) {
-            throw new Error(data.error);
-          }
 
           onAnalysisComplete(data.analysis);
           setStatus('success');
         } catch (error) {
-          handleUploadError();
+          if (error instanceof Error) {
+            const errorMessage = error.message;
+            const knownErrors = [
+              'INVALID_STATEMENT_FORMAT',
+              'RATE_LIMIT_EXCEEDED',
+              'INVALID_ANALYSIS_RESULT',
+              'ANALYSIS_FAILED',
+              'UNSUPPORTED_FILE_TYPE',
+              'UPLOAD_FAILED',
+            ] as const;
+
+            if (
+              knownErrors.includes(errorMessage as (typeof knownErrors)[number])
+            ) {
+              setError(errorMessage as UploadError);
+              onError(errorMessage);
+            } else {
+              console.error('Unknown error:', errorMessage);
+              setError('upload');
+              onError('upload');
+            }
+            setStatus('error');
+          } else {
+            handleUploadError();
+          }
         }
       }
     },
-    [onAnalysisComplete]
+    // setState functions are stable and don't need to be dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [onAnalysisComplete, onError]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -90,19 +147,7 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
   return (
     <div
       {...getRootProps()}
-      className={`p-12 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
-        error
-          ? 'border-red-500 bg-red-50/50'
-          : status === 'uploading'
-            ? 'border-blue-500 bg-blue-50/50'
-            : status === 'analyzing'
-              ? 'border-blue-500 bg-blue-50/50'
-              : status === 'success'
-                ? 'border-green-500 bg-green-50/50'
-                : isDragActive
-                  ? 'border-blue-500 bg-blue-50/50'
-                  : 'border-gray-300 hover:border-blue-400'
-      }`}
+      className={`p-12 border-2 border-dashed rounded-xl cursor-pointer transition-all ${getContainerStyles()}`}
     >
       <input
         {...getInputProps()}
@@ -129,7 +174,15 @@ export const FileUpload = ({ onAnalysisComplete }: FileUploadProps) => {
                 ? 'File is too large (max 10MB)'
                 : error === 'type'
                   ? 'Unsupported file format'
-                  : 'Upload error'}
+                  : error === 'RATE_LIMIT_EXCEEDED'
+                    ? 'The file is too large to process at the moment'
+                    : error === 'INVALID_ANALYSIS_RESULT'
+                      ? 'Unable to analyze this bank statement'
+                      : error === 'ANALYSIS_FAILED'
+                        ? 'Failed to analyze the bank statement'
+                        : error === 'UNSUPPORTED_FILE_TYPE'
+                          ? 'This file type is not supported'
+                          : 'Upload error'}
             </p>
             <p className="text-xs text-red-500">
               Please try uploading a different file
