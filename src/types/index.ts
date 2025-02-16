@@ -79,6 +79,10 @@ export type AnalysisResult = {
           month: string;
           amount: number;
         }>;
+        weekly: Array<{
+          week: string;
+          amount: number;
+        }>;
       };
     };
     cashFlow: {

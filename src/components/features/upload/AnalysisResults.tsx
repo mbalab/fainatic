@@ -34,14 +34,14 @@ const RecommendationAccordion = ({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="border rounded-lg mb-4">
+    <div className="border rounded-lg mb-4 border-[#0037FF]">
       <button
         className="w-full px-4 py-3 text-left flex justify-between items-center"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div>
-          <h4 className="font-medium text-gray-900">{recommendation.title}</h4>
-          <div className="text-sm text-green-600">
+          <h4 className="font-medium text-[#2D3E4F]">{recommendation.title}</h4>
+          <div className="text-sm text-[#0FB300]">
             +${recommendation.impact.yearly.toLocaleString()} in a year
           </div>
         </div>
@@ -51,7 +51,7 @@ const RecommendationAccordion = ({
           }`}
           fill="none"
           viewBox="0 0 24 24"
-          stroke="currentColor"
+          stroke="#2D3E4F"
         >
           <path
             strokeLinecap="round"
@@ -62,16 +62,18 @@ const RecommendationAccordion = ({
         </svg>
       </button>
       {isOpen && (
-        <div className="px-4 py-3 border-t">
-          <p className="text-gray-600 mb-4">{recommendation.description}</p>
+        <div className="px-4 py-3 border-t border-[#0037FF]">
+          <p className="text-[#2D3E4F] opacity-80 mb-4">
+            {recommendation.description}
+          </p>
           {recommendation.steps.length > 0 && (
             <div className="mb-4">
-              <h5 className="font-medium text-gray-900 mb-2">
+              <h5 className="font-medium text-[#2D3E4F] mb-2">
                 Steps to implement:
               </h5>
               <ol className="list-decimal list-inside space-y-2">
                 {recommendation.steps.map((step, index) => (
-                  <li key={index} className="text-gray-600">
+                  <li key={index} className="text-[#2D3E4F] opacity-80">
                     {step}
                   </li>
                 ))}
@@ -80,7 +82,7 @@ const RecommendationAccordion = ({
           )}
           {recommendation.links && recommendation.links.length > 0 && (
             <div>
-              <h5 className="font-medium text-gray-900 mb-2">Useful links:</h5>
+              <h5 className="font-medium text-[#2D3E4F] mb-2">Useful links:</h5>
               <ul className="space-y-2">
                 {recommendation.links.map((link, index) => (
                   <li key={index}>
@@ -88,7 +90,7 @@ const RecommendationAccordion = ({
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
+                      className="text-[#0037FF] hover:underline"
                     >
                       {link.title}
                     </a>
@@ -114,10 +116,10 @@ const CategoryAccordion = ({ category }: { category: Category }) => {
       >
         <div className="flex-1">
           <div className="flex justify-between items-center">
-            <span className="font-medium">{category.name}</span>
-            <span className="text-gray-600">${category.value.toFixed(2)}</span>
+            <span className="font-medium text-[#2D3E4F]">{category.name}</span>
+            <span className="text-[#2D3E4F]">${category.value.toFixed(2)}</span>
           </div>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-[#2D3E4F] opacity-60">
             {category.percentage.toFixed(1)}% of total
           </div>
         </div>
@@ -127,7 +129,7 @@ const CategoryAccordion = ({ category }: { category: Category }) => {
           }`}
           fill="none"
           viewBox="0 0 24 24"
-          stroke="currentColor"
+          stroke="#2D3E4F"
         >
           <path
             strokeLinecap="round"
@@ -145,8 +147,8 @@ const CategoryAccordion = ({ category }: { category: Category }) => {
                 key={index}
                 className="flex justify-between items-center py-1 text-sm"
               >
-                <span className="text-gray-700">{counterparty.name}</span>
-                <span className="text-gray-600">
+                <span className="text-[#2D3E4F]">{counterparty.name}</span>
+                <span className="text-[#2D3E4F] opacity-60">
                   ${counterparty.total.toFixed(2)}
                 </span>
               </div>
@@ -214,9 +216,15 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       <Grid container spacing={4}>
         {/* Report Info */}
         <Grid item xs={12}>
-          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+          <Card
+            sx={{
+              border: '1px solid #0037FF',
+              boxShadow:
+                '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            }}
+          >
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ color: '#2D3E4F' }}>
                 Report Information
               </Typography>
               <Grid container spacing={2}>
@@ -272,9 +280,15 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
         {/* General Statistics */}
         <Grid item xs={12}>
-          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+          <Card
+            sx={{
+              border: '1px solid #0037FF',
+              boxShadow:
+                '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            }}
+          >
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ color: '#2D3E4F' }}>
                 General Statistics
               </Typography>
               <Grid container spacing={2}>
@@ -293,7 +307,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <Typography color="textSecondary" variant="body2">
                       Total Income
                     </Typography>
-                    <Typography variant="h4" color="success.main">
+                    <Typography variant="h4" color="#0FB300">
                       $
                       {summary.income.total.toLocaleString(undefined, {
                         maximumFractionDigits: 0,
@@ -306,7 +320,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <Typography color="textSecondary" variant="body2">
                       Total Expenses
                     </Typography>
-                    <Typography variant="h4" color="error.main">
+                    <Typography variant="h4" color="#FF008C">
                       $
                       {summary.expenses.total.toLocaleString(undefined, {
                         maximumFractionDigits: 0,
@@ -319,7 +333,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <Typography color="textSecondary" variant="body2">
                       Average monthly income
                     </Typography>
-                    <Typography variant="h4" color="success.main">
+                    <Typography variant="h4" color="#0FB300">
                       $
                       {summary.income.monthlyAverage.toLocaleString(undefined, {
                         maximumFractionDigits: 0,
@@ -332,7 +346,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <Typography color="textSecondary" variant="body2">
                       Average monthly expenses
                     </Typography>
-                    <Typography variant="h4" color="error.main">
+                    <Typography variant="h4" color="#FF008C">
                       $
                       {summary.expenses.monthlyAverage.toLocaleString(
                         undefined,
@@ -346,11 +360,52 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
           </Card>
         </Grid>
 
+        {/* Income by category graph */}
+        <Grid item xs={12} md={6}>
+          <Card
+            sx={{
+              border: '1px solid #0037FF',
+              boxShadow:
+                '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              height: '100%',
+            }}
+          >
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#2D3E4F' }}>
+                Income by category
+              </Typography>
+              <Box height={300}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={summary.income.categories}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#0FB300" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+              <Box mt={2}>
+                {summary.income.categories.map((category, index) => (
+                  <CategoryAccordion key={index} category={category} />
+                ))}
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Expenses by category graph */}
         <Grid item xs={12} md={6}>
-          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+          <Card
+            sx={{
+              border: '1px solid #0037FF',
+              boxShadow:
+                '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              height: '100%',
+            }}
+          >
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ color: '#2D3E4F' }}>
                 Expenses by category
               </Typography>
               <Box height={300}>
@@ -360,7 +415,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="value" fill="#8884d8" />
+                    <Bar dataKey="value" fill="#FF008C" />
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
@@ -374,24 +429,38 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
         </Grid>
 
         {/* Trends graph */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+        <Grid item xs={12}>
+          <Card
+            sx={{
+              border: '1px solid #0037FF',
+              boxShadow:
+                '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            }}
+          >
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ color: '#2D3E4F' }}>
                 Trends
               </Typography>
               <Box height={300}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={summary.expenses.trends.monthly}>
+                  <LineChart data={summary.expenses.trends.weekly}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
+                    <XAxis 
+                      dataKey="week" 
+                      tickFormatter={(value) => `Week ${value}`}
+                    />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip 
+                      labelFormatter={(value) => `Week ${value}`}
+                      formatter={(value) => [`$${value.toLocaleString()}`, 'Amount']}
+                    />
                     <Line
                       type="monotone"
                       dataKey="amount"
-                      stroke="#8884d8"
+                      stroke="#7700FF"
                       activeDot={{ r: 8 }}
+                      dot={false}
+                      strokeWidth={2}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -402,9 +471,15 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
         {/* Cash flow */}
         <Grid item xs={12}>
-          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+          <Card
+            sx={{
+              border: '1px solid #0037FF',
+              boxShadow:
+                '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            }}
+          >
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ color: '#2D3E4F' }}>
                 {summary.cashFlow.monthly >= 0
                   ? 'Your wealth is increasing at the rate'
                   : 'Your wealth is decreasing at a rate'}
@@ -418,9 +493,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <Typography
                       variant="h4"
                       color={
-                        summary.cashFlow.daily >= 0
-                          ? 'success.main'
-                          : 'error.main'
+                        summary.cashFlow.daily >= 0 ? '#0FB300' : '#FF008C'
                       }
                     >
                       $
@@ -438,9 +511,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <Typography
                       variant="h4"
                       color={
-                        summary.cashFlow.monthly >= 0
-                          ? 'success.main'
-                          : 'error.main'
+                        summary.cashFlow.monthly >= 0 ? '#0FB300' : '#FF008C'
                       }
                     >
                       $
@@ -458,9 +529,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <Typography
                       variant="h4"
                       color={
-                        summary.cashFlow.annual >= 0
-                          ? 'success.main'
-                          : 'error.main'
+                        summary.cashFlow.annual >= 0 ? '#0FB300' : '#FF008C'
                       }
                     >
                       $
@@ -477,11 +546,17 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       </Grid>
 
       {/* Forecasts */}
-      <Box mt={4}>
-        <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+      <Box mt={4} mb={4}>
+        <Card
+          sx={{
+            border: '1px solid #0037FF',
+            boxShadow:
+              '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          }}
+        >
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Wealth Forecast With Current Cash Flow
+            <Typography variant="h6" gutterBottom sx={{ color: '#2D3E4F' }}>
+              Wealth forecast with current cash flow
             </Typography>
             <Grid container spacing={3}>
               {result.wealthForecasts.baseline.map((forecast) => (
@@ -492,9 +567,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     </Typography>
                     <Typography
                       variant="h4"
-                      color={
-                        forecast.amount >= 0 ? 'success.main' : 'error.main'
-                      }
+                      color={forecast.amount >= 0 ? '#0FB300' : '#FF008C'}
                       sx={{ mt: 1 }}
                     >
                       $
@@ -512,7 +585,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
       {/* Premium content */}
       {!isPremiumPurchased ? (
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-8 rounded-xl shadow-lg mb-12">
+        <div className="bg-gradient-to-r from-[#7700FF] to-[#0037FF] text-white p-8 rounded-xl shadow-lg mb-12">
           <h3 className="text-2xl font-bold mb-4">
             Get Personalized Recommendations
           </h3>
@@ -572,7 +645,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
           </ul>
           <button
             onClick={handlePurchasePremium}
-            className="w-full sm:w-auto px-8 py-3 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors"
+            className="w-full sm:w-auto px-8 py-3 bg-white text-[#7700FF] rounded-lg font-medium hover:bg-opacity-90 transition-colors"
           >
             Get Recommendations for $10
           </button>
