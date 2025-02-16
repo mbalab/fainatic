@@ -80,6 +80,7 @@ export type AnalysisResult = {
     cashFlow: {
       monthly: number;
       annual: number;
+      daily: number;
     };
   };
   wealthForecasts: {

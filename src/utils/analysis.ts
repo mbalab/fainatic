@@ -129,6 +129,7 @@ export const analyzeTransactions = (
     const monthlyIncomeAvg = totalIncome / monthsCount;
     const monthlyExpensesAvg = totalExpenses / monthsCount;
     const monthlyCashFlow = monthlyIncomeAvg - monthlyExpensesAvg;
+    const dailyCashFlow = (totalIncome - totalExpenses) / reportInfo.periodInDays;
 
     return {
       transactions,
@@ -154,6 +155,7 @@ export const analyzeTransactions = (
         cashFlow: {
           monthly: monthlyCashFlow,
           annual: monthlyCashFlow * 12,
+          daily: dailyCashFlow,
         },
       },
       wealthForecasts: {
