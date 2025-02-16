@@ -46,6 +46,13 @@ export type WealthForecast = {
 
 export type AnalysisResult = {
   transactions: Transaction[];
+  reportInfo: {
+    generatedAt: string;
+    firstTransactionDate: string;
+    lastTransactionDate: string;
+    periodInMonths: number;
+    periodInDays: number;
+  };
   summary: {
     totalTransactions: number;
     income: {

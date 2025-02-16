@@ -1,5 +1,5 @@
 import type { Transaction, AnalysisResult } from '@/types';
-import { format, parseISO, differenceInMonths } from 'date-fns';
+import { format, parseISO, differenceInMonths, differenceInDays } from 'date-fns';
 import { logger } from '@/utils/logger';
 
 // Helper to group transactions by category
@@ -103,6 +103,15 @@ export const analyzeTransactions = (
     );
     const monthsCount = differenceInMonths(endDate, startDate) + 1;
 
+    // Calculate report info
+    const reportInfo = {
+      generatedAt: format(new Date(), 'yyyy-MM-dd'),
+      firstTransactionDate: format(startDate, 'yyyy-MM-dd'),
+      lastTransactionDate: format(endDate, 'yyyy-MM-dd'),
+      periodInMonths: monthsCount,
+      periodInDays: differenceInDays(endDate, startDate) + 1,
+    };
+
     // Split transactions into income and expenses
     const incomeTransactions = transactions.filter((t) => t.amount > 0);
     const expenseTransactions = transactions.filter((t) => t.amount < 0);
@@ -123,6 +132,7 @@ export const analyzeTransactions = (
 
     return {
       transactions,
+      reportInfo,
       summary: {
         totalTransactions: transactions.length,
         income: {

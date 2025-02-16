@@ -137,7 +137,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     return null;
   }
 
-  const { summary } = result;
+  const { summary, reportInfo } = result;
 
   const handlePurchasePremium = () => {
     // TODO: Integration with payment system
@@ -147,6 +147,51 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   return (
     <Box p={4}>
       <Grid container spacing={4}>
+        {/* Report Info */}
+        <Grid item xs={12}>
+          <Card sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Report Information
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography color="inherit" variant="body2">
+                    Report Generated
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight="medium">
+                    {reportInfo.generatedAt}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography color="inherit" variant="body2">
+                    First Transaction
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight="medium">
+                    {reportInfo.firstTransactionDate}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography color="inherit" variant="body2">
+                    Last Transaction
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight="medium">
+                    {reportInfo.lastTransactionDate}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography color="inherit" variant="body2">
+                    Analysis Period
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight="medium">
+                    {reportInfo.periodInMonths} months ({reportInfo.periodInDays} days)
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* General Statistics */}
         <Grid item xs={12}>
           <Card>
