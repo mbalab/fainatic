@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useState } from 'react';
+import Image from 'next/image';
 import {
   Box,
   Card,
@@ -201,6 +202,15 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   return (
     <Box p={4}>
+      <Box display="flex" justifyContent="flex-start" mb={4}>
+        <Image
+          src="/logo.svg"
+          alt="Fainatic Logo"
+          width={160}
+          height={50}
+          priority
+        />
+      </Box>
       <Grid container spacing={4}>
         {/* Report Info */}
         <Grid item xs={12}>
