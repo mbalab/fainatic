@@ -214,46 +214,56 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       <Grid container spacing={4}>
         {/* Report Info */}
         <Grid item xs={12}>
-          <Card
-            sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}
-          >
+          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Report Information
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Typography color="inherit" variant="body2">
-                    Report Generated
-                  </Typography>
-                  <Typography variant="subtitle1" fontWeight="medium">
-                    {reportInfo.generatedAt}
-                  </Typography>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      Report Generated
+                    </Typography>
+                    <Typography variant="subtitle1" fontWeight="medium">
+                      {reportInfo.generatedAt}
+                    </Typography>
+                  </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Typography color="inherit" variant="body2">
-                    First Transaction
-                  </Typography>
-                  <Typography variant="subtitle1" fontWeight="medium">
-                    {reportInfo.firstTransactionDate}
-                  </Typography>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      First Transaction
+                    </Typography>
+                    <Typography variant="subtitle1" fontWeight="medium">
+                      {reportInfo.firstTransactionDate}
+                    </Typography>
+                  </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Typography color="inherit" variant="body2">
-                    Last Transaction
-                  </Typography>
-                  <Typography variant="subtitle1" fontWeight="medium">
-                    {reportInfo.lastTransactionDate}
-                  </Typography>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      Last Transaction
+                    </Typography>
+                    <Typography variant="subtitle1" fontWeight="medium">
+                      {reportInfo.lastTransactionDate}
+                    </Typography>
+                  </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Typography color="inherit" variant="body2">
-                    Analysis Period
-                  </Typography>
-                  <Typography variant="subtitle1" fontWeight="medium">
-                    {reportInfo.periodInMonths} months (
-                    {reportInfo.periodInDays} days)
-                  </Typography>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      Analysis Period
+                    </Typography>
+                    <Typography variant="subtitle1" fontWeight="medium">
+                      {Math.floor(reportInfo.periodInDays / 30)}{' '}
+                      {Math.floor(reportInfo.periodInDays / 30) === 1
+                        ? 'month'
+                        : 'months'}{' '}
+                      {reportInfo.periodInDays % 30}{' '}
+                      {reportInfo.periodInDays % 30 === 1 ? 'day' : 'days'}
+                    </Typography>
+                  </Card>
                 </Grid>
               </Grid>
             </CardContent>
@@ -262,35 +272,74 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
         {/* General Statistics */}
         <Grid item xs={12}>
-          <Card>
+          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 General Statistics
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={4}>
-                  <Typography color="textSecondary">
-                    Total transactions
-                  </Typography>
-                  <Typography variant="h4">
-                    {summary.totalTransactions}
-                  </Typography>
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      Total transactions
+                    </Typography>
+                    <Typography variant="h4">
+                      {summary.totalTransactions}
+                    </Typography>
+                  </Card>
                 </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Typography color="textSecondary">
-                    Average monthly income
-                  </Typography>
-                  <Typography variant="h4">
-                    ${summary.income.monthlyAverage.toFixed(2)}
-                  </Typography>
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      Total Income
+                    </Typography>
+                    <Typography variant="h4" color="success.main">
+                      $
+                      {summary.income.total.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </Typography>
+                  </Card>
                 </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Typography color="textSecondary">
-                    Average monthly expenses
-                  </Typography>
-                  <Typography variant="h4">
-                    ${summary.expenses.monthlyAverage.toFixed(2)}
-                  </Typography>
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      Total Expenses
+                    </Typography>
+                    <Typography variant="h4" color="error.main">
+                      $
+                      {summary.expenses.total.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </Typography>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      Average monthly income
+                    </Typography>
+                    <Typography variant="h4" color="success.main">
+                      $
+                      {summary.income.monthlyAverage.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </Typography>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      Average monthly expenses
+                    </Typography>
+                    <Typography variant="h4" color="error.main">
+                      $
+                      {summary.expenses.monthlyAverage.toLocaleString(
+                        undefined,
+                        { maximumFractionDigits: 0 }
+                      )}
+                    </Typography>
+                  </Card>
                 </Grid>
               </Grid>
             </CardContent>
@@ -299,7 +348,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
         {/* Expenses by category graph */}
         <Grid item xs={12} md={6}>
-          <Card>
+          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Expenses by category
@@ -326,7 +375,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
         {/* Trends graph */}
         <Grid item xs={12} md={6}>
-          <Card>
+          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Trends
@@ -353,56 +402,73 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
         {/* Cash flow */}
         <Grid item xs={12}>
-          <Card>
+          <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Cash flow
+                {summary.cashFlow.monthly >= 0
+                  ? 'Your wealth is increasing at the rate'
+                  : 'Your wealth is decreasing at a rate'}
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
-                  <Typography color="textSecondary">
-                    Average Daily Cash Flow
-                  </Typography>
-                  <Typography
-                    variant="h4"
-                    color={
-                      summary.cashFlow.daily >= 0
-                        ? 'success.main'
-                        : 'error.main'
-                    }
-                  >
-                    ${summary.cashFlow.daily.toFixed(2)}
-                  </Typography>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      per Day
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      color={
+                        summary.cashFlow.daily >= 0
+                          ? 'success.main'
+                          : 'error.main'
+                      }
+                    >
+                      $
+                      {summary.cashFlow.daily.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </Typography>
+                  </Card>
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                  <Typography color="textSecondary">
-                    Monthly cash flow
-                  </Typography>
-                  <Typography
-                    variant="h4"
-                    color={
-                      summary.cashFlow.monthly >= 0
-                        ? 'success.main'
-                        : 'error.main'
-                    }
-                  >
-                    ${summary.cashFlow.monthly.toFixed(2)}
-                  </Typography>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      per Month
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      color={
+                        summary.cashFlow.monthly >= 0
+                          ? 'success.main'
+                          : 'error.main'
+                      }
+                    >
+                      $
+                      {summary.cashFlow.monthly.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </Typography>
+                  </Card>
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                  <Typography color="textSecondary">
-                    Annual cash flow
-                  </Typography>
-                  <Typography
-                    variant="h4"
-                    color={
-                      summary.cashFlow.annual >= 0
-                        ? 'success.main'
-                        : 'error.main'
-                    }
-                  >
-                    ${summary.cashFlow.annual.toFixed(2)}
-                  </Typography>
+                  <Card variant="outlined" sx={{ height: '100%', p: 2 }}>
+                    <Typography color="textSecondary" variant="body2">
+                      per Year
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      color={
+                        summary.cashFlow.annual >= 0
+                          ? 'success.main'
+                          : 'error.main'
+                      }
+                    >
+                      $
+                      {summary.cashFlow.annual.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </Typography>
+                  </Card>
                 </Grid>
               </Grid>
             </CardContent>
@@ -411,29 +477,38 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       </Grid>
 
       {/* Forecasts */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-12">
-        <h3 className="text-lg font-medium text-gray-900 mb-6">
-          Wealth Forecast
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {result.wealthForecasts.baseline.map((forecast) => (
-            <div
-              key={forecast.years}
-              className="p-4 border rounded-lg bg-gray-50"
-            >
-              <h4 className="font-medium text-gray-900">
-                In {forecast.years} years
-              </h4>
-              <p className="text-2xl font-bold text-gray-900 mt-2">
-                ${forecast.amount.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                With current cash flow
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Box mt={4}>
+        <Card sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Wealth Forecast With Current Cash Flow
+            </Typography>
+            <Grid container spacing={3}>
+              {result.wealthForecasts.baseline.map((forecast) => (
+                <Grid item xs={12} md={4} key={forecast.years}>
+                  <Card variant="outlined" sx={{ p: 2 }}>
+                    <Typography variant="h6" color="text.secondary">
+                      In {forecast.years} years
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      color={
+                        forecast.amount >= 0 ? 'success.main' : 'error.main'
+                      }
+                      sx={{ mt: 1 }}
+                    >
+                      $
+                      {forecast.amount.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </Typography>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </CardContent>
+        </Card>
+      </Box>
 
       {/* Premium content */}
       {!isPremiumPurchased ? (
