@@ -1,6 +1,15 @@
 'use client';
 
+import React from 'react';
 import { useState } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  CircularProgress,
+} from '@mui/material';
 import {
   BarChart,
   Bar,
@@ -12,6 +21,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
 } from 'recharts';
 import { AnalysisResult, Recommendation } from '@/types';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
@@ -134,23 +145,43 @@ const ErrorMessage = ({ error }: { error: string }) => {
   );
 };
 
-export const AnalysisResults = ({
-  data,
+interface AnalysisResultsProps {
+  result: AnalysisResult | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
+  result,
+  isLoading,
   error,
-}: {
-  data?: AnalysisResult;
-  error?: string | null;
 }) => {
   const [isPremiumPurchased, setIsPremiumPurchased] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  if (error) {
-    return <ErrorMessage error={error} />;
+  if (isLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
-  if (!data?.income || !data?.expenses) {
+  if (error) {
+    return (
+      <Box p={4}>
+        <Typography color="error" align="center">
+          {error}
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (!result) {
     return null;
   }
+
+  const { summary } = result;
 
   const handlePurchasePremium = () => {
     // TODO: Integration with payment system
@@ -158,113 +189,137 @@ export const AnalysisResults = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-12">
-      <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl mb-12">
-        Your Financial Analysis
-      </h2>
+    <Box p={4}>
+      <Grid container spacing={4}>
+        {/* General Statistics */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                General Statistics
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <Typography color="textSecondary">
+                    Total transactions
+                  </Typography>
+                  <Typography variant="h4">
+                    {summary.totalTransactions}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography color="textSecondary">
+                    Average monthly income
+                  </Typography>
+                  <Typography variant="h4">
+                    ${summary.income.monthlyAverage.toFixed(2)}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography color="textSecondary">
+                    Average monthly expenses
+                  </Typography>
+                  <Typography variant="h4">
+                    ${summary.expenses.monthlyAverage.toFixed(2)}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      {/* Main metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Total Income
-          </h3>
-          <p className="text-3xl font-bold text-green-600">
-            ${data.income.total.toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            Average ${data.income.monthlyAverage.toLocaleString()} / month
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Total Expenses
-          </h3>
-          <p className="text-3xl font-bold text-red-600">
-            ${data.expenses.total.toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            Average ${data.expenses.monthlyAverage.toLocaleString()} / month
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Cash Flow</h3>
-          <p
-            className={`text-3xl font-bold ${
-              data.cashFlow.monthly >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}
-          >
-            ${data.cashFlow.monthly.toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">Per month</p>
-        </div>
-      </div>
+        {/* Expenses by category graph */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Expenses by category
+              </Typography>
+              <Box height={300}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={summary.expenses.categories}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-        {/* Income and expenses chart */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">
-            Income and Expenses Trends
-          </h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={data.income.trends.monthly.map((month, index) => ({
-                  name: month.month,
-                  income: month.amount,
-                  expenses: data.expenses.trends.monthly[index].amount,
-                }))}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="income" fill="#10B981" name="Income" />
-                <Bar dataKey="expenses" fill="#EF4444" name="Expenses" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Expense categories pie chart */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">
-            Expense Structure
-          </h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data.expenses.categories}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({
-                    name,
-                    percent,
-                  }: {
-                    name: string;
-                    percent: number;
-                  }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="amount"
-                >
-                  {data.expenses.categories.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
+        {/* Trends graph */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Trends
+              </Typography>
+              <Box height={300}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={summary.expenses.trends.monthly}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="#8884d8"
+                      activeDot={{ r: 8 }}
                     />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+                  </LineChart>
+                </ResponsiveContainer>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Cash flow */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Cash flow
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Typography color="textSecondary">
+                    Monthly cash flow
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    color={
+                      summary.cashFlow.monthly >= 0
+                        ? 'success.main'
+                        : 'error.main'
+                    }
+                  >
+                    ${summary.cashFlow.monthly.toFixed(2)}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography color="textSecondary">
+                    Annual cash flow
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    color={
+                      summary.cashFlow.annual >= 0
+                        ? 'success.main'
+                        : 'error.main'
+                    }
+                  >
+                    ${summary.cashFlow.annual.toFixed(2)}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Forecasts */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-12">
@@ -272,7 +327,7 @@ export const AnalysisResults = ({
           Wealth Forecast
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {data.wealthForecasts.baseline.map((forecast) => (
+          {result.wealthForecasts.baseline.map((forecast) => (
             <div
               key={forecast.years}
               className="p-4 border rounded-lg bg-gray-50"
@@ -374,7 +429,7 @@ export const AnalysisResults = ({
                     : 'Significant Changes'}
               </h3>
               <div className="space-y-4">
-                {data.recommendations?.[level]?.map((recommendation) => (
+                {result.recommendations?.[level]?.map((recommendation) => (
                   <RecommendationAccordion
                     key={recommendation.id}
                     recommendation={recommendation}
@@ -390,7 +445,7 @@ export const AnalysisResults = ({
               Forecast with Recommendations
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.entries(data.wealthForecasts.withRecommendations).map(
+              {Object.entries(result.wealthForecasts.withRecommendations).map(
                 ([level, forecasts]) => (
                   <div key={level}>
                     <h4 className="font-medium text-gray-900 mb-4">
@@ -420,6 +475,6 @@ export const AnalysisResults = ({
           </div>
         </div>
       )}
-    </div>
+    </Box>
   );
 };

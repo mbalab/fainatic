@@ -1,1 +1,87 @@
 export * from './analysis';
+
+export interface Transaction {
+  date: string;
+  amount: number;
+  currency: string;
+  counterparty: string;
+  category: string;
+}
+
+export type TransactionCategory =
+  | 'Income'
+  | 'Shopping'
+  | 'Transport'
+  | 'Food'
+  | 'Entertainment'
+  | 'Other';
+
+export type Category = {
+  name: string;
+  value: number;
+  percentage: number;
+  trend: 'up' | 'down' | 'stable';
+};
+
+export type Recommendation = {
+  id: string;
+  title: string;
+  description: string;
+  impact: {
+    monthly: number;
+    yearly: number;
+  };
+  steps: string[];
+  links: {
+    title: string;
+    url: string;
+  }[];
+};
+
+export type WealthForecast = {
+  years: number;
+  amount: number;
+  monthlyContribution: number;
+};
+
+export type AnalysisResult = {
+  transactions: Transaction[];
+  summary: {
+    totalTransactions: number;
+    income: {
+      total: number;
+      monthlyAverage: number;
+      categories: Category[];
+      trends: {
+        monthly: Array<{
+          month: string;
+          amount: number;
+        }>;
+      };
+    };
+    expenses: {
+      total: number;
+      monthlyAverage: number;
+      categories: Category[];
+      trends: {
+        monthly: Array<{
+          month: string;
+          amount: number;
+        }>;
+      };
+    };
+    cashFlow: {
+      monthly: number;
+      annual: number;
+    };
+  };
+  wealthForecasts: {
+    baseline: WealthForecast[];
+    withRecommendations: {
+      [key: string]: WealthForecast[];
+    };
+  };
+  recommendations: {
+    [key: string]: Recommendation[];
+  };
+};

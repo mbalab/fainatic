@@ -3,38 +3,72 @@
 import { useState } from 'react';
 import { FileUpload } from '../upload/FileUpload';
 import { AnalysisResults } from '../upload/AnalysisResults';
-import type { AnalysisResult } from '@/types';
+import type { AnalysisResult, Transaction } from '@/types';
+import { analyzeTransactions } from '@/utils/analysis';
+import { Typography } from '@mui/material';
 
 export const UploadSection = () => {
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleAnalysisComplete = (result: AnalysisResult) => {
-    setAnalysis(result);
-    setError(null);
+  const handleUploadComplete = async (transactions: Transaction[]) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const analysisResult = analyzeTransactions(transactions);
+      setResult(analysisResult);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to analyze transactions'
+      );
+      setResult(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleError = (error: string) => {
-    setError(error);
-    setAnalysis(null);
+  const handleError = (error: Error) => {
+    setError(error.message);
+    setResult(null);
   };
 
   return (
-    <section className="bg-white py-24 sm:py-32">
+    <section id="upload-section" className="bg-white py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        {analysis ? (
-          <AnalysisResults data={analysis} error={error} />
+        {result ? (
+          <AnalysisResults
+            result={result}
+            error={error}
+            isLoading={isLoading}
+          />
         ) : (
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl mb-4">
-              Upload Your Bank Statement
-            </h2>
-            <p className="text-lg text-gray-600 mb-8">
-              We support all major formats: CSV, Excel, PDF, or image
-            </p>
+            <Typography
+              variant="h5"
+              component="h2"
+              gutterBottom
+              sx={{
+                color: 'text.primary',
+                fontWeight: 'bold',
+                mb: 2,
+              }}
+            >
+              Upload your bank statement
+            </Typography>
+            <Typography
+              variant="body1"
+              gutterBottom
+              sx={{
+                color: 'text.secondary',
+                mb: 4,
+              }}
+            >
+              Supported formats: CSV, Excel, PDF, images
+            </Typography>
             <div className="mt-8">
               <FileUpload
-                onAnalysisComplete={handleAnalysisComplete}
+                onUploadComplete={handleUploadComplete}
                 onError={handleError}
               />
             </div>

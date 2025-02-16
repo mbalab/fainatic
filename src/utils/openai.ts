@@ -18,35 +18,30 @@ const openai = new OpenAI({
   timeout: 120000, // Increased timeout for OCR processing
 });
 
-// Определяем, является ли файл изображением
+// Check if the file is an image
 const isImageFile = (fileType: string): boolean => {
-  return (
-    fileType.startsWith('image/') ||
-    (fileType === 'application/octet-stream' &&
-      /\.(jpg|jpeg|png|gif|tiff|bmp)$/i.test(fileType))
-  );
+  return fileType.startsWith('image/');
 };
 
-// Определяем, является ли файл PDF
+// Check if the file is a PDF
 const isPDFFile = (fileType: string): boolean => {
   return fileType === 'application/pdf';
 };
 
-// Определяем, является ли файл CSV
+// Check if the file is a CSV
 const isCSVFile = (fileType: string): boolean => {
-  return fileType === 'text/csv' || fileType === 'application/csv';
+  return fileType === 'text/csv';
 };
 
-// Определяем, является ли файл Excel
+// Check if the file is an Excel file
 const isExcelFile = (fileType: string): boolean => {
   return (
-    fileType === 'application/vnd.ms-excel' ||
     fileType ===
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   );
 };
 
-// Определяем, нужно ли использовать base64
+// Check if base64 encoding is needed
 const needsBase64Encoding = (fileType: string): boolean => {
   return isImageFile(fileType) || isPDFFile(fileType);
 };
@@ -226,9 +221,9 @@ export const analyzeWithGPT4 = async (
   try {
     let extractionResult;
 
-    // Определяем стратегию обработки файла
+    // Determine file processing strategy
     if (isImageFile(fileType)) {
-      // Для изображений сразу используем Vision API
+      // For images, use Vision API directly
       logger.warn('Processing image file with Vision API');
       extractionResult = await extractTransactionsWithVision(
         fileContent,
@@ -236,17 +231,20 @@ export const analyzeWithGPT4 = async (
         fileName
       );
     } else if (isPDFFile(fileType)) {
-      // Для PDF сначала пробуем обычный GPT-4
+      // For PDF, first try standard GPT-4
       logger.warn('Attempting to process PDF with standard GPT-4');
-      extractionResult = await extractTransactionsWithGPT4(
-        fileContent,
-        fileType,
-        fileName
-      );
-
-      // Если получили ошибку о бинарном контенте, пробуем Vision API
-      if (extractionResult.error === 'BINARY_CONTENT') {
-        logger.warn('PDF appears to be scanned, switching to Vision API');
+      try {
+        extractionResult = await extractTransactionsWithGPT4(
+          fileContent,
+          fileType,
+          fileName
+        );
+      } catch (error) {
+        // If standard GPT-4 fails, try Vision API
+        logger.warn(
+          'Standard GPT-4 failed for PDF, falling back to Vision API',
+          error
+        );
         extractionResult = await extractTransactionsWithVision(
           fileContent,
           fileType,
@@ -254,7 +252,7 @@ export const analyzeWithGPT4 = async (
         );
       }
     } else if (isCSVFile(fileType) || isExcelFile(fileType)) {
-      // Для CSV и Excel файлов используем стандартный GPT-4 с текстовым контентом
+      // For CSV and Excel files, use standard GPT-4 with text content
       logger.warn(
         `Processing ${isCSVFile(fileType) ? 'CSV' : 'Excel'} file with standard GPT-4`
       );
@@ -264,13 +262,7 @@ export const analyzeWithGPT4 = async (
         fileName
       );
     } else {
-      // Для остальных форматов используем стандартный GPT-4
-      logger.warn('Processing file with standard GPT-4');
-      extractionResult = await extractTransactionsWithGPT4(
-        fileContent,
-        fileType,
-        fileName
-      );
+      throw new Error('Unsupported file type');
     }
 
     // Проверяем результат извлечения данных

@@ -31,23 +31,28 @@ A modern web service for analyzing bank statements using AI technology.
 ## Getting Started
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/mbalab/fainatic.git
    cd fainatic
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Set up environment variables:
+
    ```bash
    cp .env.example .env.local
    ```
+
    Fill in the required API keys in `.env.local`
 
 4. Run the development server:
+
    ```bash
    npm run dev
    ```
@@ -57,6 +62,7 @@ A modern web service for analyzing bank statements using AI technology.
 ## Environment Variables
 
 Required environment variables:
+
 - `OPENAI_API_KEY` - OpenAI API key for GPT-4
 - `STRIPE_SECRET_KEY` - Stripe secret key for payments
 - `STRIPE_PUBLISHABLE_KEY` - Stripe publishable key

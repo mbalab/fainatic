@@ -2,35 +2,29 @@ import { createWorker } from 'tesseract.js';
 import * as XLSX from 'xlsx';
 import { parse as csvParse } from 'csv-parse/sync';
 import { stringify as csvStringify } from 'csv-stringify/sync';
+import { Transaction } from '@/types';
+import { logger } from '@/utils/logger';
 import pdfParse from 'pdf-parse';
-import { Transaction } from '@/types/analysis';
-import { logger } from './logger';
-import { parse, format } from 'date-fns';
+import { parseISO, isValid } from 'date-fns';
+import * as Tesseract from 'tesseract.js';
+import sharp from 'sharp';
 
 // Common currency for standardization
 const DEFAULT_CURRENCY = 'USD';
 
 // Helper to parse date strings into YYYY-MM-DD format
 const standardizeDate = (dateStr: string): string => {
-  logger.log('Attempting to parse date:', dateStr);
+  logger.debug('Attempting to parse date:', dateStr);
 
-  const formats = [
-    'yyyy-MM-dd HH:mm:ss',
-    'dd/MM/yyyy',
-    'MM/dd/yyyy',
-    'yyyy/MM/dd',
-    'dd/MM/yy',
-  ];
-
-  for (const fmt of formats) {
-    try {
-      const parsedDate = parse(dateStr, fmt, new Date());
-      const result = format(parsedDate, 'yyyy-MM-dd');
-      logger.log('Parsed date:', result);
+  try {
+    const parsedDate = parseISO(dateStr);
+    if (isValid(parsedDate)) {
+      const result = parsedDate.toISOString().split('T')[0];
+      logger.debug('Parsed date:', result);
       return result;
-    } catch (error) {
-      logger.warn('Failed to parse with format:', fmt);
     }
+  } catch (error) {
+    logger.warn('Failed to parse date:', dateStr);
   }
 
   logger.error('Failed to parse date:', dateStr);
@@ -90,189 +84,152 @@ const detectCategory = (description: string, amount: number): string => {
 export const processCSV = async (
   fileContent: Buffer
 ): Promise<Transaction[]> => {
-  logger.log('Starting CSV processing');
-  const content = fileContent.toString('utf-8');
-
+  logger.debug('Starting CSV processing');
   try {
-    logger.log('Parsing CSV content');
-    const records = csvParse(content, {
+    const records = csvParse(fileContent, {
       columns: true,
       skip_empty_lines: true,
-    }) as Record<string, string>[];
-
-    logger.log('Found records:', records.length);
-    if (records.length > 0) {
-      logger.log('Sample record keys:', Object.keys(records[0]));
-    }
-
-    return records.map((record, index) => {
-      try {
-        // Try to identify common CSV column patterns
-        const date =
-          record.date ||
-          record.Date ||
-          record.DATE ||
-          record.transaction_date ||
-          record['Transaction Date'] ||
-          record['Date Posted'] ||
-          '';
-
-        const amount =
-          record.amount ||
-          record.Amount ||
-          record.AMOUNT ||
-          record.transaction_amount ||
-          record['Transaction Amount'] ||
-          record.Debit ||
-          record.Credit ||
-          '0';
-
-        const description =
-          record.description ||
-          record.Description ||
-          record.DESCRIPTION ||
-          record.merchant ||
-          record.Merchant ||
-          record['Transaction Description'] ||
-          record.Memo ||
-          record.Notes ||
-          '';
-
-        logger.log(`Processing record ${index + 1}:`, {
-          rawDate: date,
-          rawAmount: amount,
-          rawDescription: description,
-        });
-
-        const standardizedAmount = standardizeAmount(amount);
-        const standardizedDate = standardizeDate(date);
-
-        logger.log(`Standardized record ${index + 1}:`, {
-          date: standardizedDate,
-          amount: standardizedAmount,
-          description,
-        });
-
-        return {
-          date: standardizedDate,
-          amount: standardizedAmount,
-          currency: DEFAULT_CURRENCY,
-          counterparty: description,
-          category: detectCategory(description, standardizedAmount),
-        };
-      } catch (error) {
-        logger.error(`Error processing record ${index + 1}:`, error);
-        throw error;
-      }
     });
+
+    return records.map((record: any) => ({
+      date: standardizeDate(record.date),
+      amount: standardizeAmount(record.amount),
+      currency: record.currency || DEFAULT_CURRENCY,
+      counterparty: record.counterparty || record.description || '',
+      category:
+        record.category ||
+        detectCategory(
+          record.description || '',
+          standardizeAmount(record.amount)
+        ),
+    }));
   } catch (error) {
-    logger.error('Error parsing CSV:', error);
-    throw new Error(
-      `Failed to parse CSV: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+    logger.error('Error processing CSV:', error);
+    throw new Error('Failed to process CSV file');
   }
 };
 
 // Process Excel file
-export const processExcel = async (
+export const processXLSX = async (
   fileContent: Buffer
 ): Promise<Transaction[]> => {
-  const workbook = XLSX.read(fileContent);
-  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-  const records = XLSX.utils.sheet_to_json(firstSheet) as Record<
-    string,
-    string
-  >[];
+  logger.debug('Starting XLSX processing');
+  try {
+    const workbook = XLSX.read(fileContent);
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const records = XLSX.utils.sheet_to_json(worksheet);
 
-  return records.map((record) => {
-    const date =
-      record.date ||
-      record.Date ||
-      record.DATE ||
-      record.transaction_date ||
-      '';
-    const amount =
-      record.amount ||
-      record.Amount ||
-      record.AMOUNT ||
-      record.transaction_amount ||
-      '0';
-    const description =
-      record.description ||
-      record.Description ||
-      record.DESCRIPTION ||
-      record.merchant ||
-      '';
-
-    const standardizedAmount = standardizeAmount(amount);
-
-    return {
-      date: standardizeDate(date),
-      amount: standardizedAmount,
-      currency: DEFAULT_CURRENCY,
-      counterparty: description,
-      category: detectCategory(description, standardizedAmount),
-    };
-  });
+    return records.map((record: any) => ({
+      date: standardizeDate(record.date),
+      amount: standardizeAmount(record.amount),
+      currency: record.currency || DEFAULT_CURRENCY,
+      counterparty: record.counterparty || record.description || '',
+      category:
+        record.category ||
+        detectCategory(
+          record.description || '',
+          standardizeAmount(record.amount)
+        ),
+    }));
+  } catch (error) {
+    logger.error('Error processing XLSX:', error);
+    throw new Error('Failed to process XLSX file');
+  }
 };
 
 // Process PDF file
 export const processPDF = async (
   fileContent: Buffer
 ): Promise<Transaction[]> => {
+  logger.debug('Starting PDF processing');
   try {
-    // First try to extract text directly
-    const pdfData = await pdfParse(fileContent);
-    const text = pdfData.text;
+    const data = await pdfParse(fileContent);
+    const text = data.text;
 
-    // If text extraction successful, try to parse transactions
-    if (text.length > 0) {
-      return extractTransactionsFromText(text);
+    if (!text.trim()) {
+      logger.debug('PDF appears to be scanned, attempting OCR');
+      return processScannedPDF(fileContent);
     }
 
-    // If no text was extracted, try OCR
-    const worker = await createWorker('eng');
-    const {
-      data: { text: ocrText },
-    } = await worker.recognize(fileContent);
-    await worker.terminate();
-
-    return extractTransactionsFromText(ocrText);
+    return extractTransactionsFromText(text);
   } catch (error) {
     logger.error('Error processing PDF:', error);
     throw new Error('Failed to process PDF file');
   }
 };
 
-// Helper function to extract transactions from text
+const processScannedPDF = async (
+  fileContent: Buffer
+): Promise<Transaction[]> => {
+  logger.debug('Processing scanned PDF with OCR');
+  try {
+    const {
+      data: { text },
+    } = await Tesseract.recognize(fileContent, 'eng', {
+      logger: (m) => logger.debug(m),
+    });
+    return extractTransactionsFromText(text);
+  } catch (error) {
+    logger.error('Error processing scanned PDF:', error);
+    throw new Error('Failed to process scanned PDF with OCR');
+  }
+};
+
 const extractTransactionsFromText = (text: string): Transaction[] => {
-  const lines = text.split('\n').filter((line) => line.trim().length > 0);
+  logger.debug('Extracting transactions from text');
+  const lines = text.split('\n').filter((line) => line.trim());
   const transactions: Transaction[] = [];
 
+  const dateRegex = /\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b/;
+  const amountRegex = /\$?\s*\d+(?:,\d{3})*(?:\.\d{2})?/;
+
   for (const line of lines) {
-    const datePattern = /\d{2}[-/]\d{2}[-/]\d{2,4}/;
-    const amountPattern = /[-]?\$?\d+,?\d*\.?\d*/;
+    const dateMatch = line.match(dateRegex);
+    const amountMatch = line.match(amountRegex);
 
-    const dateMatch = line.match(datePattern);
-    const amountMatch = line.match(amountPattern);
-
-    if (dateMatch && amountMatch) {
-      const standardizedAmount = standardizeAmount(amountMatch[0]);
+    if (amountMatch) {
+      const amount = standardizeAmount(amountMatch[0]);
+      const date = dateMatch
+        ? standardizeDate(dateMatch[0])
+        : new Date().toISOString().split('T')[0];
 
       transactions.push({
-        date: standardizeDate(dateMatch[0]),
-        amount: standardizedAmount,
+        date,
+        amount,
         currency: DEFAULT_CURRENCY,
-        counterparty: line
-          .replace(datePattern, '')
-          .replace(amountPattern, '')
-          .trim(),
-        category: detectCategory(line, standardizedAmount),
+        counterparty: line.trim(),
+        category: detectCategory(line, amount),
       });
     }
   }
 
   return transactions;
+};
+
+export const processImage = async (
+  fileContent: Buffer
+): Promise<Transaction[]> => {
+  logger.debug('Starting image processing');
+  try {
+    // Оптимизация изображения для OCR
+    const optimizedImage = await sharp(fileContent)
+      .greyscale()
+      .normalize()
+      .sharpen()
+      .toBuffer();
+
+    const {
+      data: { text },
+    } = await Tesseract.recognize(optimizedImage, 'eng', {
+      logger: (m) => logger.debug(m),
+    });
+
+    return extractTransactionsFromText(text);
+  } catch (error) {
+    logger.error('Error processing image:', error);
+    throw new Error('Failed to process image file');
+  }
 };
 
 // Convert transactions to CSV string
@@ -288,7 +245,7 @@ export const processFile = async (
   file: Buffer,
   fileType: string
 ): Promise<Transaction[]> => {
-  logger.log('Processing file of type:', fileType);
+  logger.debug('Processing file of type:', fileType);
 
   // Normalize file type
   const normalizedType = fileType.toLowerCase();
@@ -297,22 +254,22 @@ export const processFile = async (
   if (
     normalizedType === 'text/csv' ||
     normalizedType === 'application/csv' ||
-    normalizedType === 'text/plain' // Some systems send CSV as text/plain
+    normalizedType === 'text/plain'
   ) {
-    logger.log('Processing as CSV');
+    logger.debug('Processing as CSV');
     return processCSV(file);
   }
 
   // Handle Excel files
   if (
-    normalizedType === 'application/vnd.ms-excel' || // .xls
+    normalizedType === 'application/vnd.ms-excel' ||
     normalizedType ===
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || // .xlsx
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
     normalizedType === 'application/x-excel' ||
     normalizedType === 'application/x-msexcel'
   ) {
-    logger.log('Processing as Excel');
-    return processExcel(file);
+    logger.debug('Processing as Excel');
+    return processXLSX(file);
   }
 
   // Handle PDF files
@@ -320,10 +277,28 @@ export const processFile = async (
     normalizedType === 'application/pdf' ||
     normalizedType === 'application/x-pdf'
   ) {
-    logger.log('Processing as PDF');
+    logger.debug('Processing as PDF');
     return processPDF(file);
   }
 
-  logger.log('Unsupported file type:', fileType);
+  // Handle image files
+  if (normalizedType.startsWith('image/')) {
+    logger.debug('Processing as Image');
+    return processImage(file);
+  }
+
+  logger.debug('Unsupported file type:', fileType);
   throw new Error(`Unsupported file type: ${fileType}`);
 };
+
+export function validateTransactions(transactions: Transaction[]): boolean {
+  return transactions.every((transaction) => {
+    return (
+      transaction.date &&
+      !isNaN(transaction.amount) &&
+      transaction.currency &&
+      transaction.counterparty !== undefined &&
+      transaction.category !== undefined
+    );
+  });
+}
