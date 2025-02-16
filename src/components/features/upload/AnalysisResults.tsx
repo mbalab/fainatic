@@ -288,6 +288,21 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
                   <Typography color="textSecondary">
+                    Average Daily Cash Flow
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    color={
+                      summary.cashFlow.daily >= 0
+                        ? 'success.main'
+                        : 'error.main'
+                    }
+                  >
+                    ${summary.cashFlow.daily.toFixed(2)}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography color="textSecondary">
                     Monthly cash flow
                   </Typography>
                   <Typography
@@ -314,21 +329,6 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     }
                   >
                     ${summary.cashFlow.annual.toFixed(2)}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Typography color="textSecondary">
-                    Average Daily Cash Flow
-                  </Typography>
-                  <Typography
-                    variant="h4"
-                    color={
-                      summary.cashFlow.daily >= 0
-                        ? 'success.main'
-                        : 'error.main'
-                    }
-                  >
-                    ${summary.cashFlow.daily.toFixed(2)}
                   </Typography>
                 </Grid>
               </Grid>
