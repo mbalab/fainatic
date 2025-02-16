@@ -4,16 +4,6 @@ import { logger } from '@/utils/logger';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-const SUPPORTED_FILE_TYPES = new Set([
-  'text/csv',
-  'text/plain',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-]);
-
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();

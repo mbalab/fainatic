@@ -105,13 +105,18 @@ const processImage = async (buffer: Buffer): Promise<Transaction[]> => {
     .sharpen() // Sharpen the image
     .toBuffer();
 
-  const worker = await createWorker('eng');
-  const {
-    data: { text },
-  } = await worker.recognize(optimizedBuffer);
-  await worker.terminate();
+  try {
+    const worker = await createWorker('eng');
+    const {
+      data: { text },
+    } = await worker.recognize(optimizedBuffer);
+    await worker.terminate();
 
-  return extractTransactionsFromText(text);
+    return extractTransactionsFromText(text);
+  } catch (err) {
+    logger.error('Error processing image:', err);
+    throw new Error('Failed to process image file');
+  }
 };
 
 // Extract transactions from text

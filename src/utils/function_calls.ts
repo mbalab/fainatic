@@ -24,44 +24,6 @@ const detectCategory = (description: string, amount: number): string => {
   return 'Other';
 };
 
-// Helper to parse date strings into YYYY-MM-DD format
-const standardizeDate = (dateStr: string): string => {
-  logger.debug('Attempting to parse date:', dateStr);
-
-  try {
-    // Try different date formats
-    const formats = [
-      'yyyy-MM-dd',
-      'dd/MM/yyyy',
-      'MM/dd/yyyy',
-      'dd-MM-yyyy',
-      'MM-dd-yyyy',
-    ];
-
-    for (const format of formats) {
-      const parsedDate = parse(dateStr, format, new Date());
-      if (isValid(parsedDate)) {
-        const result = parsedDate.toISOString().split('T')[0];
-        logger.debug('Parsed date:', result);
-        return result;
-      }
-    }
-
-    // Try ISO format as last resort
-    const isoDate = parseISO(dateStr);
-    if (isValid(isoDate)) {
-      const result = isoDate.toISOString().split('T')[0];
-      logger.debug('Parsed ISO date:', result);
-      return result;
-    }
-  } catch (error) {
-    logger.warn('Failed to parse date:', dateStr);
-  }
-
-  logger.error('Failed to parse date:', dateStr);
-  throw new Error(`Invalid date format: ${dateStr}`);
-};
-
 // Extract transactions from text
 const extractTransactionsFromText = (text: string): Transaction[] => {
   if (!text || typeof text !== 'string') {
