@@ -37,7 +37,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch('/api/process-file', {
+        const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
@@ -67,7 +67,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     [onUploadComplete, onError]
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: {
       'text/csv': ['.csv'],
@@ -78,6 +78,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       'image/*': ['.png', '.jpg', '.jpeg'],
     },
     multiple: false,
+    noClick: true, // Отключаем клик по всей зоне
   });
 
   return (
@@ -89,7 +90,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         borderRadius: 2,
         p: 3,
         textAlign: 'center',
-        cursor: 'pointer',
         bgcolor: isDragActive ? 'action.hover' : 'background.paper',
         transition: 'all 0.2s ease-in-out',
         '&:hover': {
@@ -115,7 +115,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           <Typography variant="body2" color="text.secondary">
             Supported formats: CSV, XLSX, PDF, PNG, JPG (max 10MB)
           </Typography>
-          <Button variant="contained" component="span">
+          <Button variant="contained" onClick={open} sx={{ mt: 2 }}>
             Select File
           </Button>
         </Box>

@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { createWorker } from 'tesseract.js';
 import { parse as csvParse } from 'csv-parse/sync';
 import pdfParse from 'pdf-parse';
@@ -50,20 +50,44 @@ const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
 
 // Process Excel file
 const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
-  const workbook = XLSX.read(buffer);
-  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-  const records = XLSX.utils.sheet_to_json(firstSheet);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const worksheet = workbook.worksheets[0];
+  const transactions: Transaction[] = [];
 
-  return records.map((record: any) => ({
-    date: record.date,
-    amount: parseFloat(record.amount),
-    currency: DEFAULT_CURRENCY,
-    counterparty: record.description || record.counterparty || '',
-    category: detectCategory(
-      record.description || record.counterparty || '',
-      parseFloat(record.amount)
-    ),
-  }));
+  // Get header row
+  const headers = worksheet.getRow(1).values as string[];
+  const dateIndex = headers.findIndex((h) => h?.toLowerCase().includes('date'));
+  const amountIndex = headers.findIndex((h) =>
+    h?.toLowerCase().includes('amount')
+  );
+  const descriptionIndex = headers.findIndex(
+    (h) =>
+      h?.toLowerCase().includes('description') ||
+      h?.toLowerCase().includes('counterparty')
+  );
+
+  // Process rows
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // Skip header row
+
+    const values = row.values as any[];
+    const date = values[dateIndex];
+    const amount = parseFloat(values[amountIndex]);
+    const description = values[descriptionIndex]?.toString() || '';
+
+    if (date && !isNaN(amount)) {
+      transactions.push({
+        date: date.toString(),
+        amount,
+        currency: DEFAULT_CURRENCY,
+        counterparty: description,
+        category: detectCategory(description, amount),
+      });
+    }
+  });
+
+  return transactions;
 };
 
 // Process PDF file

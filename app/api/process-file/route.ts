@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processFile } from '@/utils/serverFileProcessing';
 import { logger } from '@/utils/logger';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {

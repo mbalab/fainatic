@@ -18,16 +18,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   LineChart,
   Line,
 } from 'recharts';
 import { AnalysisResult, Recommendation } from '@/types';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 type RecommendationAccordionProps = {
   recommendation: Recommendation;
@@ -108,43 +102,6 @@ const RecommendationAccordion = ({
   );
 };
 
-const ErrorMessage = ({ error }: { error: string }) => {
-  const errorMessages: { [key: string]: string } = {
-    INVALID_STATEMENT_FORMAT:
-      'The file could not be processed as a bank statement. Please check if you selected the correct file.',
-    RATE_LIMIT_EXCEEDED:
-      'The file is too large to process at the moment. Please try again with a smaller file or wait a few minutes.',
-    INVALID_ANALYSIS_RESULT:
-      'We were unable to analyze this bank statement. Please ensure the file contains valid transaction data.',
-    ANALYSIS_FAILED:
-      'An error occurred while analyzing your bank statement. Please try again later.',
-    UNSUPPORTED_FILE_TYPE:
-      'This file type is not supported. Please upload a CSV, Excel, or PDF file.',
-    UPLOAD_FAILED: 'Failed to upload the file. Please try again.',
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto">
-      <div className="p-4 mb-4 text-red-800 bg-red-50 rounded-lg">
-        <div className="flex items-center">
-          <ExclamationTriangleIcon className="w-5 h-5 mr-2" />
-          <span className="font-medium">Analysis Error</span>
-        </div>
-        <p className="mt-2">
-          {errorMessages[error] ||
-            'An unexpected error occurred. Please try again.'}
-        </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition-colors"
-        >
-          Try Again
-        </button>
-      </div>
-    </div>
-  );
-};
-
 interface AnalysisResultsProps {
   result: AnalysisResult | null;
   isLoading: boolean;
@@ -157,7 +114,6 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   error,
 }) => {
   const [isPremiumPurchased, setIsPremiumPurchased] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   if (isLoading) {
     return (

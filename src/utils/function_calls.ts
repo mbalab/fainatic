@@ -1,11 +1,6 @@
 import { createWorker } from 'tesseract.js';
-import * as XLSX from 'xlsx';
-import { parse as csvParse } from 'csv-parse/sync';
-import { stringify as csvStringify } from 'csv-stringify/sync';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
-import pdfParse from 'pdf-parse';
-import { parseISO, isValid, parse } from 'date-fns';
 
 // Common currency for standardization
 const DEFAULT_CURRENCY = 'USD';
@@ -67,7 +62,7 @@ const standardizeDate = (dateStr: string): string => {
   throw new Error(`Invalid date format: ${dateStr}`);
 };
 
-// Helper to extract transactions from text
+// Extract transactions from text
 const extractTransactionsFromText = (text: string): Transaction[] => {
   if (!text || typeof text !== 'string') {
     logger.error('Invalid text input for transaction extraction');
@@ -87,12 +82,10 @@ const extractTransactionsFromText = (text: string): Transaction[] => {
 
     if (dateMatch && amountMatch) {
       try {
-        const date = standardizeDate(dateMatch[0]);
         const amount = parseFloat(amountMatch[0].replace(/[$,]/g, ''));
-
         if (!isNaN(amount)) {
           transactions.push({
-            date,
+            date: dateMatch[0],
             amount,
             currency: DEFAULT_CURRENCY,
             counterparty: line.trim(),

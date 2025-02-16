@@ -4,6 +4,9 @@ const nextConfig = {
     domains: [],
     unoptimized: process.env.NODE_ENV === 'development',
   },
+  experimental: {
+    outputFileTracingRoot: process.cwd(),
+  },
   webpack: (config) => {
     // Add polyfills for Node.js modules
     config.resolve.fallback = {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processFile, validateTransactions } from '@/utils/fileProcessing';
+import { processFile } from '@/utils/fileProcessing';
 import type { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
 
@@ -21,72 +21,55 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
 
     if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const type = file.type;
-
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
+    // Check file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
         { error: 'File size exceeds 10MB limit' },
         { status: 400 }
       );
     }
 
-    // Validate file type
-    if (!SUPPORTED_FILE_TYPES.has(type)) {
+    logger.debug('Processing file:', file.name, 'type:', file.type);
+
+    const buffer = await file.arrayBuffer();
+    const transactions = await processFile(Buffer.from(buffer), file.type);
+
+    // Validate transactions
+    const isValid = transactions.every((transaction) => {
+      return (
+        transaction.date &&
+        !isNaN(transaction.amount) &&
+        transaction.currency &&
+        transaction.counterparty !== undefined &&
+        transaction.category !== undefined
+      );
+    });
+
+    if (!isValid) {
       return NextResponse.json(
-        { error: 'UNSUPPORTED_FILE_TYPE' },
+        { error: 'Invalid transaction data' },
         { status: 400 }
       );
     }
 
-    // Convert file to buffer
-    const buffer = Buffer.from(await file.arrayBuffer());
+    logger.debug(
+      'File processed successfully:',
+      transactions.length,
+      'transactions found'
+    );
 
-    try {
-      // Process file
-      const transactions = await processFile(buffer, type);
-
-      // Validate extracted transactions
-      if (!validateTransactions(transactions)) {
-        throw new Error('INVALID_TRANSACTION_FORMAT');
-      }
-
-      // Return standardized transactions
-      return NextResponse.json({ transactions });
-    } catch (error) {
-      if (error instanceof Error) {
-        const errorMessage = error.message;
-
-        // Handle known errors
-        switch (errorMessage) {
-          case 'INVALID_CSV_FORMAT':
-          case 'INVALID_EXCEL_FORMAT':
-          case 'INVALID_PDF_FORMAT':
-          case 'SCANNED_PDF_PROCESSING_FAILED':
-          case 'IMAGE_PROCESSING_FAILED':
-          case 'INVALID_TRANSACTION_FORMAT':
-          case 'PDF_TEXT_EXTRACTION_NOT_IMPLEMENTED':
-          case 'IMAGE_TEXT_EXTRACTION_NOT_IMPLEMENTED':
-            return NextResponse.json({ error: errorMessage }, { status: 400 });
-          default:
-            logger.error('Unknown processing error:', error);
-            return NextResponse.json(
-              { error: 'FILE_PROCESSING_FAILED' },
-              { status: 500 }
-            );
-        }
-      }
-
-      return NextResponse.json(
-        { error: 'FILE_PROCESSING_FAILED' },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({ transactions });
   } catch (error) {
-    logger.error('Upload error:', error);
-    return NextResponse.json({ error: 'UPLOAD_FAILED' }, { status: 500 });
+    logger.error('Error processing file:', error);
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      },
+      { status: 500 }
+    );
   }
 }
