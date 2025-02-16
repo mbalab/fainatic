@@ -147,7 +147,7 @@ const extractTransactionsFromText = (text: string): Transaction[] => {
             category: detectCategory(line, amount),
           });
         }
-      } catch (error) {
+      } catch {
         logger.warn('Failed to parse transaction from line:', line);
       }
     }
