@@ -92,8 +92,8 @@ const extractTransactionsFromText = (text: string): Transaction[] => {
             category: detectCategory(line, amount),
           });
         }
-      } catch (error) {
-        logger.warn('Failed to parse transaction from line:', line);
+      } catch (err) {
+        logger.warn('Failed to parse transaction from line:', line, err);
       }
     }
   }
@@ -117,8 +117,8 @@ export const processImage = async (
     await worker.terminate();
 
     return extractTransactionsFromText(text);
-  } catch (error) {
-    logger.error('Error processing image:', error);
+  } catch (err) {
+    logger.error('Error processing image:', err);
     throw new Error('Failed to process image file');
   }
 };

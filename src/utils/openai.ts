@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { AnalysisResult } from '@/types';
 
 const logger = {

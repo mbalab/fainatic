@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processFile } from '@/utils/fileProcessing';
-import type { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -25,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: 'File size exceeds 10MB limit' },
         { status: 400 }

@@ -27,26 +27,27 @@ const detectCategory = (description: string, amount: number): string => {
 
 // Helper to find column indices based on common patterns
 const findColumnIndices = (headers: string[]) => {
-  const datePatterns = ['date', 'дата', 'день'];
+  const datePatterns = ['date', 'day', 'transaction_date', 'payment_date'];
   const amountPatterns = [
     'amount',
     'sum',
-    'сумма',
-    'дебет',
-    'кредит',
+    'total',
     'debit',
     'credit',
+    'payment',
+    'transaction_amount'
   ];
   const descriptionPatterns = [
     'description',
     'desc',
     'narrative',
     'details',
-    'описание',
-    'назначение',
-    'контрагент',
-    'получатель',
+    'memo',
+    'note',
+    'reference',
+    'payee',
     'counterparty',
+    'merchant'
   ];
 
   const findIndex = (patterns: string[]) => {
@@ -62,8 +63,8 @@ const findColumnIndices = (headers: string[]) => {
     dateIndex: findIndex(datePatterns),
     amountIndices: {
       single: findIndex(amountPatterns),
-      debit: findIndex(['debit', 'дебет', 'расход']),
-      credit: findIndex(['credit', 'кредит', 'приход']),
+      debit: findIndex(['debit', 'debit', 'расход']),
+      credit: findIndex(['credit', 'credit', 'приход']),
     },
     descriptionIndex: findIndex(descriptionPatterns),
   };
