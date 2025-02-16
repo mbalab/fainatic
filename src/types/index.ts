@@ -21,6 +21,10 @@ export type Category = {
   value: number;
   percentage: number;
   trend: 'up' | 'down' | 'stable';
+  counterparties: Array<{
+    name: string;
+    total: number;
+  }>;
 };
 
 export type Recommendation = {

@@ -1,5 +1,10 @@
 import type { Transaction, AnalysisResult } from '@/types';
-import { format, parseISO, differenceInMonths, differenceInDays } from 'date-fns';
+import {
+  format,
+  parseISO,
+  differenceInMonths,
+  differenceInDays,
+} from 'date-fns';
 import { logger } from '@/utils/logger';
 
 // Helper to group transactions by category
@@ -23,11 +28,24 @@ const groupByCategory = (transactions: Transaction[]) => {
       transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0)
     );
 
+    // Group by counterparty within category
+    const counterpartyGroups = new Map<string, number>();
+    transactions.forEach((t) => {
+      const currentTotal = counterpartyGroups.get(t.counterparty) || 0;
+      counterpartyGroups.set(t.counterparty, currentTotal + Math.abs(t.amount));
+    });
+
+    // Convert to array and sort by total
+    const counterparties = Array.from(counterpartyGroups.entries())
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total);
+
     return {
       name: category,
       value: total,
       percentage: (total / totalAmount) * 100,
       trend: calculateTrend(transactions),
+      counterparties,
     };
   });
 };
@@ -129,7 +147,8 @@ export const analyzeTransactions = (
     const monthlyIncomeAvg = totalIncome / monthsCount;
     const monthlyExpensesAvg = totalExpenses / monthsCount;
     const monthlyCashFlow = monthlyIncomeAvg - monthlyExpensesAvg;
-    const dailyCashFlow = (totalIncome - totalExpenses) / reportInfo.periodInDays;
+    const dailyCashFlow =
+      (totalIncome - totalExpenses) / reportInfo.periodInDays;
 
     return {
       transactions,

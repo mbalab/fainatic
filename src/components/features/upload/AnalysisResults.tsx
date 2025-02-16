@@ -21,7 +21,7 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { AnalysisResult, Recommendation } from '@/types';
+import { AnalysisResult, Recommendation, Category } from '@/types';
 
 type RecommendationAccordionProps = {
   recommendation: Recommendation;
@@ -102,6 +102,61 @@ const RecommendationAccordion = ({
   );
 };
 
+const CategoryAccordion = ({ category }: { category: Category }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="mb-2">
+      <button
+        className="w-full px-3 py-2 text-left flex justify-between items-center bg-gray-50 hover:bg-gray-100 rounded-lg"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex-1">
+          <div className="flex justify-between items-center">
+            <span className="font-medium">{category.name}</span>
+            <span className="text-gray-600">${category.value.toFixed(2)}</span>
+          </div>
+          <div className="text-sm text-gray-500">
+            {category.percentage.toFixed(1)}% of total
+          </div>
+        </div>
+        <svg
+          className={`w-5 h-5 transform transition-transform ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="mt-2 pl-4">
+          {category.counterparties.map(
+            (counterparty: { name: string; total: number }, index: number) => (
+              <div
+                key={index}
+                className="flex justify-between items-center py-1 text-sm"
+              >
+                <span className="text-gray-700">{counterparty.name}</span>
+                <span className="text-gray-600">
+                  ${counterparty.total.toFixed(2)}
+                </span>
+              </div>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface AnalysisResultsProps {
   result: AnalysisResult | null;
   isLoading: boolean;
@@ -149,7 +204,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       <Grid container spacing={4}>
         {/* Report Info */}
         <Grid item xs={12}>
-          <Card sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+          <Card
+            sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}
+          >
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Report Information
@@ -184,7 +241,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     Analysis Period
                   </Typography>
                   <Typography variant="subtitle1" fontWeight="medium">
-                    {reportInfo.periodInMonths} months ({reportInfo.periodInDays} days)
+                    {reportInfo.periodInMonths} months (
+                    {reportInfo.periodInDays} days)
                   </Typography>
                 </Grid>
               </Grid>
@@ -246,6 +304,11 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <Bar dataKey="value" fill="#8884d8" />
                   </BarChart>
                 </ResponsiveContainer>
+              </Box>
+              <Box mt={2}>
+                {summary.expenses.categories.map((category, index) => (
+                  <CategoryAccordion key={index} category={category} />
+                ))}
               </Box>
             </CardContent>
           </Card>
