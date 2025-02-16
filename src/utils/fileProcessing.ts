@@ -1,57 +1,15 @@
-import { createWorker } from 'tesseract.js';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { parse as csvParse } from 'csv-parse/sync';
-import { stringify as csvStringify } from 'csv-stringify/sync';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
-import pdfParse from 'pdf-parse';
-import { parseISO, isValid } from 'date-fns';
-import * as Tesseract from 'tesseract.js';
-import sharp from 'sharp';
 
 // Common currency for standardization
 const DEFAULT_CURRENCY = 'USD';
-
-// Helper to parse date strings into YYYY-MM-DD format
-const standardizeDate = (dateStr: string): string => {
-  logger.debug('Attempting to parse date:', dateStr);
-
-  try {
-    const parsedDate = parseISO(dateStr);
-    if (isValid(parsedDate)) {
-      const result = parsedDate.toISOString().split('T')[0];
-      logger.debug('Parsed date:', result);
-      return result;
-    }
-  } catch (error) {
-    logger.warn('Failed to parse date:', dateStr);
-  }
-
-  logger.error('Failed to parse date:', dateStr);
-  throw new Error(`Invalid date format: ${dateStr}`);
-};
-
-// Helper to clean and standardize amount
-const standardizeAmount = (amount: string | number): number => {
-  if (typeof amount === 'string') {
-    // Remove currency symbols, spaces and other non-numeric characters except . and -
-    const cleanAmount = amount.replace(/[^0-9.-]/g, '');
-
-    // Handle negative amounts that might be in parentheses
-    if (amount.includes('(') && amount.includes(')')) {
-      return -Math.abs(parseFloat(cleanAmount));
-    }
-
-    return parseFloat(cleanAmount) || 0;
-  }
-  return amount || 0;
-};
 
 // Helper to detect transaction type and assign basic category
 const detectCategory = (description: string, amount: number): string => {
   const lowerDesc = description.toLowerCase();
 
-  // Basic category detection logic
   if (amount > 0) return 'Income';
   if (lowerDesc.includes('salary') || lowerDesc.includes('payroll'))
     return 'Income';
@@ -63,242 +21,272 @@ const detectCategory = (description: string, amount: number): string => {
     return 'Food';
   if (lowerDesc.includes('netflix') || lowerDesc.includes('spotify'))
     return 'Entertainment';
-  if (lowerDesc.includes('grocery') || lowerDesc.includes('food'))
-    return 'Groceries';
-  if (lowerDesc.includes('gas') || lowerDesc.includes('fuel'))
-    return 'Transport';
-  if (lowerDesc.includes('insurance')) return 'Insurance';
-  if (lowerDesc.includes('rent') || lowerDesc.includes('mortgage'))
-    return 'Housing';
-  if (
-    lowerDesc.includes('utility') ||
-    lowerDesc.includes('electric') ||
-    lowerDesc.includes('water')
-  )
-    return 'Utilities';
 
   return 'Other';
 };
 
+// Helper to find column indices based on common patterns
+const findColumnIndices = (headers: string[]) => {
+  const datePatterns = ['date', 'дата', 'день'];
+  const amountPatterns = [
+    'amount',
+    'sum',
+    'сумма',
+    'дебет',
+    'кредит',
+    'debit',
+    'credit',
+  ];
+  const descriptionPatterns = [
+    'description',
+    'desc',
+    'narrative',
+    'details',
+    'описание',
+    'назначение',
+    'контрагент',
+    'получатель',
+    'counterparty',
+  ];
+
+  const findIndex = (patterns: string[]) => {
+    const index = headers.findIndex((h) => {
+      if (!h) return false;
+      const header = h.toString().toLowerCase().trim();
+      return patterns.some((pattern) => header.includes(pattern));
+    });
+    return index === -1 ? null : index;
+  };
+
+  return {
+    dateIndex: findIndex(datePatterns),
+    amountIndices: {
+      single: findIndex(amountPatterns),
+      debit: findIndex(['debit', 'дебет', 'расход']),
+      credit: findIndex(['credit', 'кредит', 'приход']),
+    },
+    descriptionIndex: findIndex(descriptionPatterns),
+  };
+};
+
+// Helper to extract amount from various formats
+const extractAmount = (
+  record: any[],
+  indices: ReturnType<typeof findColumnIndices>
+): number => {
+  const { amountIndices } = indices;
+
+  // Try single amount column first
+  if (amountIndices.single !== null && record[amountIndices.single]) {
+    const amount = parseFloat(
+      record[amountIndices.single].toString().replace(/[^-0-9.]/g, '')
+    );
+    if (!isNaN(amount)) return amount;
+  }
+
+  // Try debit/credit columns
+  if (
+    amountIndices.debit !== null &&
+    amountIndices.credit !== null &&
+    record[amountIndices.debit] &&
+    record[amountIndices.credit]
+  ) {
+    const debit =
+      parseFloat(
+        record[amountIndices.debit].toString().replace(/[^-0-9.]/g, '')
+      ) || 0;
+    const credit =
+      parseFloat(
+        record[amountIndices.credit].toString().replace(/[^-0-9.]/g, '')
+      ) || 0;
+    return credit - debit;
+  }
+
+  throw new Error('Could not find valid amount column');
+};
+
 // Process CSV file
-export const processCSV = async (
-  fileContent: Buffer
-): Promise<Transaction[]> => {
-  logger.debug('Starting CSV processing');
+const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
   try {
-    const records = csvParse(fileContent, {
+    logger.debug('Starting CSV processing');
+    const content = buffer.toString();
+
+    // Try to detect delimiter
+    const firstLine = content.split('\n')[0];
+    const delimiter =
+      [',', ';', '\t'].find((d) => firstLine.includes(d)) || ',';
+
+    const records = csvParse(content, {
       columns: true,
       skip_empty_lines: true,
+      trim: true,
+      cast: true,
+      delimiter,
     });
 
-    return records.map((record: any) => ({
-      date: standardizeDate(record.date),
-      amount: standardizeAmount(record.amount),
-      currency: record.currency || DEFAULT_CURRENCY,
-      counterparty: record.counterparty || record.description || '',
-      category:
-        record.category ||
-        detectCategory(
-          record.description || '',
-          standardizeAmount(record.amount)
-        ),
-    }));
+    if (records.length === 0) {
+      throw new Error('No records found in CSV file');
+    }
+
+    // Get column indices from headers
+    const headers = Object.keys(records[0]);
+    const columnIndices = findColumnIndices(headers);
+
+    if (columnIndices.dateIndex === null) {
+      throw new Error('Could not find date column');
+    }
+
+    const transactions = records
+      .map((record: any) => {
+        try {
+          const amount = extractAmount(Object.values(record), columnIndices);
+          const date = record[headers[columnIndices.dateIndex!]];
+          const description =
+            columnIndices.descriptionIndex !== null
+              ? record[headers[columnIndices.descriptionIndex]]?.toString()
+              : '';
+
+          if (!date) {
+            throw new Error('Missing date value');
+          }
+
+          return {
+            date: date.toString(),
+            amount,
+            currency: DEFAULT_CURRENCY,
+            counterparty: description || '',
+            category: detectCategory(description || '', amount),
+          } as Transaction;
+        } catch (error) {
+          logger.warn('Skipping invalid record:', record, error);
+          return null;
+        }
+      })
+      .filter((t: Transaction | null): t is Transaction => t !== null);
+
+    if (transactions.length === 0) {
+      throw new Error('No valid transactions found in CSV file');
+    }
+
+    logger.debug('Successfully processed transactions:', transactions.length);
+    return transactions;
   } catch (error) {
-    logger.error('Error processing CSV:', error);
-    throw new Error('Failed to process CSV file');
+    logger.error('Error in CSV processing:', error);
+    throw new Error(
+      error instanceof Error
+        ? `Failed to process CSV: ${error.message}`
+        : 'Failed to process CSV file'
+    );
   }
 };
 
 // Process Excel file
-export const processXLSX = async (
-  fileContent: Buffer
-): Promise<Transaction[]> => {
-  logger.debug('Starting XLSX processing');
+const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   try {
-    const workbook = XLSX.read(fileContent);
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const records = XLSX.utils.sheet_to_json(worksheet);
+    const workbook = new ExcelJS.Workbook();
 
-    return records.map((record: any) => ({
-      date: standardizeDate(record.date),
-      amount: standardizeAmount(record.amount),
-      currency: record.currency || DEFAULT_CURRENCY,
-      counterparty: record.counterparty || record.description || '',
-      category:
-        record.category ||
-        detectCategory(
-          record.description || '',
-          standardizeAmount(record.amount)
-        ),
-    }));
-  } catch (error) {
-    logger.error('Error processing XLSX:', error);
-    throw new Error('Failed to process XLSX file');
-  }
-};
+    // Create a readable stream from buffer
+    const stream = require('stream');
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(buffer);
 
-// Process PDF file
-export const processPDF = async (
-  fileContent: Buffer
-): Promise<Transaction[]> => {
-  logger.debug('Starting PDF processing');
-  try {
-    const data = await pdfParse(fileContent);
-    const text = data.text;
+    // Load workbook from stream
+    await workbook.xlsx.read(bufferStream);
 
-    if (!text.trim()) {
-      logger.debug('PDF appears to be scanned, attempting OCR');
-      return processScannedPDF(fileContent);
+    // Try to find a worksheet with transaction data
+    const worksheet =
+      workbook.worksheets.find((ws) => {
+        const firstRow = ws.getRow(1).values as string[];
+        const indices = findColumnIndices(firstRow);
+        return (
+          indices.dateIndex !== null &&
+          (indices.amountIndices.single !== null ||
+            (indices.amountIndices.debit !== null &&
+              indices.amountIndices.credit !== null))
+        );
+      }) || workbook.worksheets[0];
+
+    if (!worksheet) {
+      throw new Error('No worksheet found in Excel file');
     }
 
-    return extractTransactionsFromText(text);
-  } catch (error) {
-    logger.error('Error processing PDF:', error);
-    throw new Error('Failed to process PDF file');
-  }
-};
+    const transactions: Transaction[] = [];
 
-const processScannedPDF = async (
-  fileContent: Buffer
-): Promise<Transaction[]> => {
-  logger.debug('Processing scanned PDF with OCR');
-  try {
-    const {
-      data: { text },
-    } = await Tesseract.recognize(fileContent, 'eng', {
-      logger: (m) => logger.debug(m),
-    });
-    return extractTransactionsFromText(text);
-  } catch (error) {
-    logger.error('Error processing scanned PDF:', error);
-    throw new Error('Failed to process scanned PDF with OCR');
-  }
-};
-
-const extractTransactionsFromText = (text: string): Transaction[] => {
-  logger.debug('Extracting transactions from text');
-  const lines = text.split('\n').filter((line) => line.trim());
-  const transactions: Transaction[] = [];
-
-  const dateRegex = /\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b/;
-  const amountRegex = /\$?\s*\d+(?:,\d{3})*(?:\.\d{2})?/;
-
-  for (const line of lines) {
-    const dateMatch = line.match(dateRegex);
-    const amountMatch = line.match(amountRegex);
-
-    if (amountMatch) {
-      const amount = standardizeAmount(amountMatch[0]);
-      const date = dateMatch
-        ? standardizeDate(dateMatch[0])
-        : new Date().toISOString().split('T')[0];
-
-      transactions.push({
-        date,
-        amount,
-        currency: DEFAULT_CURRENCY,
-        counterparty: line.trim(),
-        category: detectCategory(line, amount),
-      });
-    }
-  }
-
-  return transactions;
-};
-
-export const processImage = async (
-  fileContent: Buffer
-): Promise<Transaction[]> => {
-  logger.debug('Starting image processing');
-  try {
-    // Оптимизация изображения для OCR
-    const optimizedImage = await sharp(fileContent)
-      .greyscale()
-      .normalize()
-      .sharpen()
-      .toBuffer();
-
-    const {
-      data: { text },
-    } = await Tesseract.recognize(optimizedImage, 'eng', {
-      logger: (m) => logger.debug(m),
-    });
-
-    return extractTransactionsFromText(text);
-  } catch (error) {
-    logger.error('Error processing image:', error);
-    throw new Error('Failed to process image file');
-  }
-};
-
-// Convert transactions to CSV string
-export const transactionsToCSV = (transactions: Transaction[]): string => {
-  return csvStringify(transactions, {
-    header: true,
-    columns: ['date', 'amount', 'currency', 'counterparty', 'category'],
-  });
-};
-
-// Main function to process any supported file type
-export const processFile = async (
-  file: Buffer,
-  fileType: string
-): Promise<Transaction[]> => {
-  logger.debug('Processing file of type:', fileType);
-
-  // Normalize file type
-  const normalizedType = fileType.toLowerCase();
-
-  // Handle CSV files
-  if (
-    normalizedType === 'text/csv' ||
-    normalizedType === 'application/csv' ||
-    normalizedType === 'text/plain'
-  ) {
-    logger.debug('Processing as CSV');
-    return processCSV(file);
-  }
-
-  // Handle Excel files
-  if (
-    normalizedType === 'application/vnd.ms-excel' ||
-    normalizedType ===
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-    normalizedType === 'application/x-excel' ||
-    normalizedType === 'application/x-msexcel'
-  ) {
-    logger.debug('Processing as Excel');
-    return processXLSX(file);
-  }
-
-  // Handle PDF files
-  if (
-    normalizedType === 'application/pdf' ||
-    normalizedType === 'application/x-pdf'
-  ) {
-    logger.debug('Processing as PDF');
-    return processPDF(file);
-  }
-
-  // Handle image files
-  if (normalizedType.startsWith('image/')) {
-    logger.debug('Processing as Image');
-    return processImage(file);
-  }
-
-  logger.debug('Unsupported file type:', fileType);
-  throw new Error(`Unsupported file type: ${fileType}`);
-};
-
-export function validateTransactions(transactions: Transaction[]): boolean {
-  return transactions.every((transaction) => {
-    return (
-      transaction.date &&
-      !isNaN(transaction.amount) &&
-      transaction.currency &&
-      transaction.counterparty !== undefined &&
-      transaction.category !== undefined
+    // Get column indices from headers
+    const headers = (worksheet.getRow(1).values as string[]).map(
+      (h) => h?.toString() || ''
     );
-  });
-}
+    const columnIndices = findColumnIndices(headers);
+
+    if (columnIndices.dateIndex === null) {
+      throw new Error('Could not find date column in Excel file');
+    }
+
+    // Process rows
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip header row
+
+      try {
+        const values = row.values as any[];
+        if (!values[columnIndices.dateIndex!]) return; // Skip rows without date
+
+        const date = values[columnIndices.dateIndex!];
+        const amount = extractAmount(values, columnIndices);
+        const description =
+          columnIndices.descriptionIndex !== null &&
+          values[columnIndices.descriptionIndex]
+            ? values[columnIndices.descriptionIndex].toString()
+            : '';
+
+        transactions.push({
+          date: date.toString(),
+          amount,
+          currency: DEFAULT_CURRENCY,
+          counterparty: description,
+          category: detectCategory(description, amount),
+        });
+      } catch (error) {
+        logger.warn('Skipping invalid row:', rowNumber, error);
+      }
+    });
+
+    if (transactions.length === 0) {
+      throw new Error('No valid transactions found in Excel file');
+    }
+
+    return transactions;
+  } catch (error) {
+    logger.error('Error processing Excel file:', error);
+    throw new Error(
+      error instanceof Error
+        ? `Failed to process Excel file: ${error.message}`
+        : 'Failed to process Excel file'
+    );
+  }
+};
+
+// Main processing function
+export const processFile = async (
+  buffer: Buffer,
+  mimeType: string
+): Promise<Transaction[]> => {
+  if (!buffer || !(buffer instanceof Buffer)) {
+    throw new Error('Invalid file content provided');
+  }
+
+  logger.debug('Processing file with mime type:', mimeType);
+
+  try {
+    switch (mimeType) {
+      case 'text/csv':
+        return await processCSV(buffer);
+      case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+        return await processExcel(buffer);
+      default:
+        throw new Error(`Unsupported file type: ${mimeType}`);
+    }
+  } catch (error) {
+    logger.error('Error processing file:', error);
+    throw error;
+  }
+};
