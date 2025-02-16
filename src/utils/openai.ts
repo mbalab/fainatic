@@ -1,11 +1,6 @@
 import OpenAI from 'openai';
-import { AnalysisResult } from '@/types';
-
-const logger = {
-  error: (message: string, ...args: unknown[]) =>
-    console.error(message, ...args),
-  warn: (message: string, ...args: unknown[]) => console.warn(message, ...args),
-};
+import type { Transaction, AnalysisResult } from '@/types';
+import { logger } from '@/utils/logger';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY is not defined in environment variables');
@@ -207,136 +202,49 @@ Return the result in the specified JSON format.`,
 };
 
 export const analyzeWithGPT4 = async (
-  fileContent: Buffer,
-  fileType: string,
-  fileName: string
+  transactions: Transaction[],
+  fileType?: string,
+  fileName?: string
 ): Promise<AnalysisResult> => {
-  logger.warn('Processing file:', {
+  logger.debug('Starting GPT-4 analysis', {
+    transactionsCount: transactions.length,
     fileType,
     fileName,
-    contentLength: fileContent.length,
   });
 
   try {
-    let extractionResult;
+    // Convert transactions to CSV format for GPT
+    const csvHeader = 'date,amount,currency,counterparty,category\n';
+    const csvRows = transactions
+      .map(
+        (t) =>
+          `${t.date},${t.amount},${t.currency},${t.counterparty},${t.category}`
+      )
+      .join('\n');
+    const csvData = csvHeader + csvRows;
 
-    // Determine file processing strategy
-    if (isImageFile(fileType)) {
-      // For images, use Vision API directly
-      logger.warn('Processing image file with Vision API');
-      extractionResult = await extractTransactionsWithVision(
-        fileContent,
-        fileType,
-        fileName
-      );
-    } else if (isPDFFile(fileType)) {
-      // For PDF, first try standard GPT-4
-      logger.warn('Attempting to process PDF with standard GPT-4');
-      try {
-        extractionResult = await extractTransactionsWithGPT4(
-          fileContent,
-          fileType,
-          fileName
-        );
-      } catch (error) {
-        // If standard GPT-4 fails, try Vision API
-        logger.warn(
-          'Standard GPT-4 failed for PDF, falling back to Vision API',
-          error
-        );
-        extractionResult = await extractTransactionsWithVision(
-          fileContent,
-          fileType,
-          fileName
-        );
-      }
-    } else if (isCSVFile(fileType) || isExcelFile(fileType)) {
-      // For CSV and Excel files, use standard GPT-4 with text content
-      logger.warn(
-        `Processing ${isCSVFile(fileType) ? 'CSV' : 'Excel'} file with standard GPT-4`
-      );
-      extractionResult = await extractTransactionsWithGPT4(
-        fileContent,
-        fileType,
-        fileName
-      );
-    } else {
-      throw new Error('Unsupported file type');
-    }
-
-    // Проверяем результат извлечения данных
-    if (extractionResult.error) {
-      throw new Error(extractionResult.error);
-    }
-
-    // Анализируем извлеченные транзакции
+    // Get recommendations from GPT-4
     const response = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview',
       messages: [
         {
           role: 'system',
-          content: `You are a financial analysis expert. Analyze the provided transaction data and generate comprehensive financial insights as JSON.
+          content: `You are a financial advisor analyzing transaction data to provide personalized recommendations.
 Focus on:
-- Categorizing transactions accurately
-- Calculating totals and averages
-- Identifying trends and patterns
-- Ensuring all calculations are accurate`,
-        },
-        {
-          role: 'user',
-          content: `Please analyze these transactions and provide detailed financial insights in JSON format:
+1. Identifying spending patterns and potential areas for optimization
+2. Suggesting specific, actionable steps to improve financial health
+3. Providing realistic estimates of potential savings
 
-${JSON.stringify(extractionResult, null, 2)}
+For each difficulty level (easy, moderate, significant):
+- Provide exactly 3 recommendations
+- Each recommendation should include:
+  - Clear title
+  - Detailed description
+  - Estimated monthly and yearly impact
+  - Specific implementation steps
+  - Relevant resources or links
 
 Return the analysis in this JSON format:
-{
-  "totalTransactions": number,
-  "income": {
-    "total": number,
-    "categories": [{ "name": string, "amount": number, "percentage": number, "trend": "up" | "down" | "stable" }],
-    "monthlyAverage": number,
-    "trends": { "monthly": [{ "month": string, "amount": number }] }
-  },
-  "expenses": {
-    "total": number,
-    "categories": [{ "name": string, "amount": number, "percentage": number, "trend": "up" | "down" | "stable" }],
-    "monthlyAverage": number,
-    "trends": { "monthly": [{ "month": string, "amount": number }] }
-  },
-  "cashFlow": {
-    "monthly": number,
-    "trends": { "monthly": [{ "month": string, "amount": number }] }
-  },
-  "dateRange": { "from": string, "to": string }
-}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.1,
-    });
-
-    const result = JSON.parse(response.choices[0].message.content || '{}');
-
-    // Check if analysis failed
-    if (result.error) {
-      throw new Error(result.error);
-    }
-
-    // Get recommendations in a separate call
-    const recommendationsResponse = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are a financial advisor providing personalized recommendations based on transaction analysis. Return recommendations as JSON.',
-        },
-        {
-          role: 'user',
-          content: `Based on this financial analysis, provide recommendations in JSON format:
-${JSON.stringify(result, null, 2)}
-
-Return recommendations in this JSON format:
 {
   "recommendations": {
     "easy": [{
@@ -351,48 +259,31 @@ Return recommendations in this JSON format:
     "significant": [...]
   },
   "wealthForecasts": {
-    "baseline": [{ "years": number, "amount": number, "monthlyFlow": number }],
     "withRecommendations": {
-      "easy": [...],
+      "easy": [{ "years": number, "amount": number }],
       "moderate": [...],
       "significant": [...]
     }
   }
 }`,
         },
+        {
+          role: 'user',
+          content: `Analyze these transactions and provide personalized recommendations:
+
+${csvData}`,
+        },
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.2,
+      temperature: 0.1,
     });
 
-    const recommendations = JSON.parse(
-      recommendationsResponse.choices[0].message.content || '{}'
-    );
+    const analysis = JSON.parse(response.choices[0].message.content || '{}');
+    logger.debug('Analysis completed successfully');
 
-    return {
-      ...result,
-      ...recommendations,
-    } as AnalysisResult;
+    return analysis;
   } catch (error) {
-    logger.error('OpenAI error:', error);
-
-    if (error instanceof Error) {
-      if (error.message.includes('rate_limit_exceeded')) {
-        throw new Error('RATE_LIMIT_EXCEEDED');
-      }
-      if (
-        error.message === 'INVALID_STATEMENT_FORMAT' ||
-        error.message === 'NO_TRANSACTIONS_FOUND' ||
-        error.message === 'BINARY_CONTENT' ||
-        error.message === 'VISION_API_ERROR'
-      ) {
-        throw new Error(error.message);
-      }
-      if (error.message.includes('timeout')) {
-        throw new Error('ANALYSIS_TIMEOUT');
-      }
-    }
-
-    throw new Error('ANALYSIS_FAILED');
+    logger.error('Error in GPT-4 analysis:', error);
+    throw error;
   }
 };

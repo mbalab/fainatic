@@ -1,16 +1,16 @@
 export const logger = {
-  debug: (...args: any[]) => {
+  debug: (message: string, ...args: unknown[]) => {
     if (process.env.NODE_ENV === 'development') {
-      console.debug('[DEBUG]', ...args);
+      console.debug(`[DEBUG] ${message}`, ...args);
     }
   },
-  info: (...args: any[]) => {
-    console.info('[INFO]', ...args);
+  info: (message: string, ...args: unknown[]) => {
+    console.info(`[INFO] ${message}`, ...args);
   },
-  warn: (...args: any[]) => {
-    console.warn('[WARN]', ...args);
+  warn: (message: string, ...args: unknown[]) => {
+    console.warn(`[WARN] ${message}`, ...args);
   },
-  error: (...args: any[]) => {
-    console.error('[ERROR]', ...args);
+  error: (message: string, ...args: unknown[]) => {
+    console.error(`[ERROR] ${message}`, ...args);
   },
 };

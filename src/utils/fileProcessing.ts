@@ -35,7 +35,7 @@ const findColumnIndices = (headers: string[]) => {
     'debit',
     'credit',
     'payment',
-    'transaction_amount'
+    'transaction_amount',
   ];
   const descriptionPatterns = [
     'description',
@@ -47,7 +47,7 @@ const findColumnIndices = (headers: string[]) => {
     'reference',
     'payee',
     'counterparty',
-    'merchant'
+    'merchant',
   ];
 
   const findIndex = (patterns: string[]) => {

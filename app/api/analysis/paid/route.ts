@@ -7,13 +7,16 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const transactionsJson = formData.get('transactions');
-    
+
     if (!transactionsJson || typeof transactionsJson !== 'string') {
-      return NextResponse.json({ error: 'No transactions provided' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No transactions provided' },
+        { status: 400 }
+      );
     }
 
     const transactions = JSON.parse(transactionsJson) as Transaction[];
-    
+
     if (!Array.isArray(transactions)) {
       return NextResponse.json(
         { error: 'Invalid transaction data format' },
@@ -47,7 +50,8 @@ export async function POST(request: NextRequest) {
     logger.error('Error in paid analysis:', error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       },
       { status: 500 }
     );

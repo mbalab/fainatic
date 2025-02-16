@@ -1,9 +1,5 @@
 import type { Transaction, AnalysisResult } from '@/types';
-import {
-  format,
-  parseISO,
-  differenceInMonths,
-} from 'date-fns';
+import { format, parseISO, differenceInMonths } from 'date-fns';
 import { logger } from '@/utils/logger';
 
 // Helper to group transactions by category
@@ -112,7 +108,10 @@ export const analyzeTransactions = (
     const expenseTransactions = transactions.filter((t) => t.amount < 0);
 
     // Calculate totals
-    const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = incomeTransactions.reduce(
+      (sum, t) => sum + t.amount,
+      0
+    );
     const totalExpenses = Math.abs(
       expenseTransactions.reduce((sum, t) => sum + t.amount, 0)
     );
