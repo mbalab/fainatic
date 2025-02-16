@@ -187,7 +187,7 @@ export const analyzeTransactions = (
     );
 
     // Calculate monthly averages
-    const monthlyIncomeAvg = totalIncome / (reportInfo.periodInDays / 30.44); // среднее количество дней в месяце
+    const monthlyIncomeAvg = totalIncome / (reportInfo.periodInDays / 30.44); // average days in month
     const monthlyExpensesAvg =
       totalExpenses / (reportInfo.periodInDays / 30.44);
     const monthlyCashFlow = monthlyIncomeAvg - monthlyExpensesAvg;

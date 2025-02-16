@@ -78,7 +78,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       'image/*': ['.png', '.jpg', '.jpeg'],
     },
     multiple: false,
-    noClick: true, // Отключаем клик по всей зоне
+    noClick: true, // Disable click on the entire zone
   });
 
   return (

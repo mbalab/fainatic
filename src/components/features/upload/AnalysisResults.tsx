@@ -405,7 +405,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                   .sort((a, b) => b.value - a.value)
                   .reduce((acc, category, index, array) => {
                     if (index < 5) {
-                      // Добавляем топ-5 категорий как обычно
+                      // Add top 5 categories as usual
                       acc.push(
                         <div
                           key={index}
@@ -455,7 +455,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         </div>
                       );
                     } else if (index === 5) {
-                      // Создаем категорию "Other" для оставшихся категорий
+                      // Create "Other" category for remaining categories
                       const otherCategories = array.slice(5);
                       const otherTotal = otherCategories.reduce(
                         (sum, cat) => sum + cat.value,

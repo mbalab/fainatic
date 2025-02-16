@@ -63,8 +63,8 @@ const findColumnIndices = (headers: string[]) => {
     dateIndex: findIndex(datePatterns),
     amountIndices: {
       single: findIndex(amountPatterns),
-      debit: findIndex(['debit', 'debit', 'расход']),
-      credit: findIndex(['credit', 'credit', 'приход']),
+      debit: findIndex(['debit', 'debit', 'expense']),
+      credit: findIndex(['credit', 'credit', 'income']),
     },
     descriptionIndex: findIndex(descriptionPatterns),
   };
