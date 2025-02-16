@@ -12,21 +12,6 @@ const openai = new OpenAI({
   timeout: 120000, // Increased timeout for OCR processing
 });
 
-// Check if the file is an image
-const isImageFile = (fileType: string): boolean => {
-  return fileType.startsWith('image/');
-};
-
-// Check if the file is a PDF
-const isPDFFile = (fileType: string): boolean => {
-  return fileType === 'application/pdf';
-};
-
-// Check if base64 encoding is needed
-const needsBase64Encoding = (fileType: string): boolean => {
-  return isImageFile(fileType) || isPDFFile(fileType);
-};
-
 export const analyzeWithGPT4 = async (
   transactions: Transaction[],
   fileType?: string,
