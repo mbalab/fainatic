@@ -23,6 +23,7 @@ import {
   Line,
 } from 'recharts';
 import { AnalysisResult, Recommendation, Category } from '@/types';
+import { TooltipProps } from 'recharts';
 
 type RecommendationAccordionProps = {
   recommendation: Recommendation;
@@ -165,6 +166,15 @@ interface AnalysisResultsProps {
   isLoading: boolean;
   error: string | null;
 }
+
+type ValueType = string | number | Array<string | number>;
+type NameType = string | number;
+
+const formatter = (value: number) => {
+  return value >= 0
+    ? `+$${value.toLocaleString()}`
+    : `-$${Math.abs(value).toLocaleString()}`;
+};
 
 export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   result,
@@ -376,19 +386,131 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               </Typography>
               <Box height={300}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={summary.income.categories}>
+                  <BarChart data={summary.income.trends.monthly}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
+                    <XAxis dataKey="month" />
                     <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#0FB300" />
+                    <Tooltip
+                      formatter={(value) => [
+                        `$${value.toLocaleString()}`,
+                        'Amount',
+                      ]}
+                    />
+                    <Bar dataKey="amount" fill="#0FB300" />
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
               <Box mt={2}>
-                {summary.income.categories.map((category, index) => (
-                  <CategoryAccordion key={index} category={category} />
-                ))}
+                {summary.income.categories
+                  .sort((a, b) => b.value - a.value)
+                  .reduce((acc, category, index, array) => {
+                    if (index < 5) {
+                      // Добавляем топ-5 категорий как обычно
+                      acc.push(
+                        <div
+                          key={index}
+                          className="mb-3 p-3 bg-white rounded-lg border border-[#0037FF] hover:border-[#7700FF] transition-colors"
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium text-[#2D3E4F]">
+                              {category.name}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              {category.name !== 'Income' && (
+                                <span className="text-sm text-[#2D3E4F] opacity-60">
+                                  {category.percentage.toFixed(1)}%
+                                </span>
+                              )}
+                              <span className="font-medium text-[#0FB300]">
+                                $
+                                {category.value.toLocaleString(undefined, {
+                                  maximumFractionDigits: 0,
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            {category.counterparties.map(
+                              (counterparty, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex justify-between items-center text-sm"
+                                >
+                                  <span className="text-[#2D3E4F] opacity-80">
+                                    {counterparty.name}
+                                  </span>
+                                  <span className="text-[#2D3E4F]">
+                                    $
+                                    {counterparty.total.toLocaleString(
+                                      undefined,
+                                      {
+                                        maximumFractionDigits: 0,
+                                      }
+                                    )}
+                                  </span>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      );
+                    } else if (index === 5) {
+                      // Создаем категорию "Other" для оставшихся категорий
+                      const otherCategories = array.slice(5);
+                      const otherTotal = otherCategories.reduce(
+                        (sum, cat) => sum + cat.value,
+                        0
+                      );
+                      const totalSum = array.reduce(
+                        (sum, cat) => sum + cat.value,
+                        0
+                      );
+                      const otherPercentage = (otherTotal / totalSum) * 100;
+
+                      acc.push(
+                        <div
+                          key="other"
+                          className="mb-3 p-3 bg-white rounded-lg border border-[#0037FF] hover:border-[#7700FF] transition-colors"
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium text-[#2D3E4F]">
+                              Other
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm text-[#2D3E4F] opacity-60">
+                                {otherPercentage.toFixed(1)}%
+                              </span>
+                              <span className="font-medium text-[#0FB300]">
+                                $
+                                {otherTotal.toLocaleString(undefined, {
+                                  maximumFractionDigits: 0,
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            {otherCategories.map((cat, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between items-center text-sm"
+                              >
+                                <span className="text-[#2D3E4F] opacity-80">
+                                  {cat.name}
+                                </span>
+                                <span className="text-[#2D3E4F]">
+                                  $
+                                  {cat.value.toLocaleString(undefined, {
+                                    maximumFractionDigits: 0,
+                                  })}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return acc;
+                  }, [] as React.ReactNode[])}
               </Box>
             </CardContent>
           </Card>
@@ -410,12 +532,17 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               </Typography>
               <Box height={300}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={summary.expenses.categories}>
+                  <BarChart data={summary.expenses.trends.monthly}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
+                    <XAxis dataKey="month" />
                     <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#FF008C" />
+                    <Tooltip
+                      formatter={(value) => [
+                        `$${value.toLocaleString()}`,
+                        'Amount',
+                      ]}
+                    />
+                    <Bar dataKey="amount" fill="#FF008C" />
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
@@ -443,16 +570,40 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               </Typography>
               <Box height={300}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={summary.expenses.trends.weekly}>
+                  <LineChart
+                    data={summary.expenses.trends.weekly}
+                    margin={{ top: 5, right: 20, bottom: 25, left: 0 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="week" 
-                      tickFormatter={(value) => `Week ${value}`}
+                    <XAxis
+                      dataKey="week"
+                      tickFormatter={(value) => value}
+                      label={{
+                        value: 'Weeks',
+                        position: 'bottom',
+                        offset: 10,
+                        style: { fontSize: 12 },
+                      }}
+                      interval={2}
+                      tick={{ fontSize: 12 }}
                     />
-                    <YAxis />
-                    <Tooltip 
-                      labelFormatter={(value) => `Week ${value}`}
-                      formatter={(value) => [`$${value.toLocaleString()}`, 'Amount']}
+                    <YAxis
+                      tickFormatter={(value) =>
+                        `$${value.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        })}`
+                      }
+                      tick={{ fontSize: 12 }}
+                      width={80}
+                    />
+                    <Tooltip
+                      labelFormatter={(label: string, payload: Array<any>) =>
+                        payload[0]?.payload?.date || ''
+                      }
+                      formatter={(value: ValueType) => [
+                        formatter(value as number),
+                        'Cash Flow',
+                      ]}
                     />
                     <Line
                       type="monotone"
@@ -460,7 +611,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       stroke="#7700FF"
                       activeDot={{ r: 8 }}
                       dot={false}
-                      strokeWidth={2}
+                      strokeWidth={3}
                     />
                   </LineChart>
                 </ResponsiveContainer>

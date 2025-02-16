@@ -113,6 +113,30 @@ const calculateWeeklyTrends = (transactions: Transaction[]) => {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([week, amount]) => ({
       week: week.split('-')[1], // Only show week number
+      amount: Math.abs(amount),
+    }));
+};
+
+// Helper to calculate weekly cash flow
+const calculateWeeklyCashFlow = (transactions: Transaction[]) => {
+  const weeklyAmounts = new Map<string, number>();
+  const weekDates = new Map<string, string>();
+
+  transactions.forEach((transaction) => {
+    const date = parseISO(transaction.date);
+    const weekKey = format(date, 'yyyy-ww');
+    const currentAmount = weeklyAmounts.get(weekKey) || 0;
+    weeklyAmounts.set(weekKey, currentAmount + transaction.amount);
+    if (!weekDates.has(weekKey)) {
+      weekDates.set(weekKey, format(date, 'MMM d, yyyy'));
+    }
+  });
+
+  return Array.from(weeklyAmounts.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([week, amount]) => ({
+      week: week.split('-')[1],
+      date: weekDates.get(week),
       amount,
     }));
 };
@@ -189,7 +213,7 @@ export const analyzeTransactions = (
           categories: groupByCategory(expenseTransactions),
           trends: {
             monthly: calculateMonthlyTrends(expenseTransactions),
-            weekly: calculateWeeklyTrends(expenseTransactions),
+            weekly: calculateWeeklyCashFlow(transactions),
           },
         },
         cashFlow: {
