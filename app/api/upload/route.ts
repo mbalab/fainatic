@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest, { params }: { params: {} }) {
   try {
-    const formData = await request.formData();
+    const formData = await req.formData();
     const file = formData.get('file') as File;
 
     if (!file) {
@@ -33,8 +33,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       return NextResponse.json(
         {
-          error:
-            error instanceof Error ? error.message : 'File processing failed',
+          error: error instanceof Error ? error.message : 'File processing failed',
         },
         { status: 500 }
       );
@@ -43,8 +42,7 @@ export async function POST(request: NextRequest) {
     logger.error('Error processing file:', error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : 'Unknown error occurred',
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
       },
       { status: 500 }
     );
