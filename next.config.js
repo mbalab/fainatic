@@ -5,16 +5,13 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig = {
-  webpack: (config, { isServer }) => {
-    // Exclude test files from pdf-parse
-    config.module.rules.push({
-      test: /pdf\.js$/,
-      include: /pdf-parse/,
-      use: 'null-loader',
-    });
-
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    };
     return config;
   },
 };
 
-module.exports = withPWA(nextConfig); 
+module.exports = withPWA(nextConfig);

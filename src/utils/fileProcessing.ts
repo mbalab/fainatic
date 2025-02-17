@@ -1,6 +1,5 @@
 import { parse as csvParse } from 'csv-parse/sync';
 import ExcelJS from 'exceljs';
-import pdfParse from 'pdf-parse';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
 
@@ -82,13 +81,13 @@ const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
 const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   try {
     const workbook = new ExcelJS.Workbook();
-    
+
     const stream = require('stream');
     const bufferStream = new stream.PassThrough();
     bufferStream.end(buffer);
-    
+
     await workbook.xlsx.read(bufferStream);
-    
+
     const worksheet = workbook.worksheets[0];
     if (!worksheet) {
       throw new Error('No worksheet found in Excel file');
@@ -151,82 +150,6 @@ const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   }
 };
 
-// Process PDF file
-const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
-  try {
-    logger.debug('Starting PDF processing');
-
-    if (!buffer || buffer.length === 0) {
-      throw new Error('Empty or invalid PDF buffer provided');
-    }
-
-    if (buffer.slice(0, 5).toString() !== '%PDF-') {
-      throw new Error('Invalid PDF format: missing PDF signature');
-    }
-
-    let data;
-    try {
-      data = await pdfParse(buffer);
-    } catch (error) {
-      throw new Error(
-        error instanceof Error
-          ? `Failed to parse PDF: ${error.message}`
-          : 'Failed to parse PDF file'
-      );
-    }
-
-    const text = data.text;
-    if (!text || text.trim().length === 0) {
-      throw new Error('No text content found in PDF');
-    }
-
-    const lines = text.split('\n').filter((line) => line.trim());
-    const transactions: Transaction[] = [];
-
-    const dateRegex = /\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b/;
-    const amountRegex = /\$?\s*-?\d+(?:,\d{3})*(?:\.\d{2})?/;
-    const currencyRegex = /(?:USD|EUR|GBP|JPY|RUB)/i;
-
-    for (const line of lines) {
-      const dateMatch = line.match(dateRegex);
-      const amountMatch = line.match(amountRegex);
-      const currencyMatch = line.match(currencyRegex);
-
-      if (dateMatch && amountMatch) {
-        try {
-          const amount = parseFloat(amountMatch[0].replace(/[$,]/g, ''));
-          if (!isNaN(amount)) {
-            transactions.push({
-              date: dateMatch[0],
-              amount,
-              currency: currencyMatch
-                ? currencyMatch[0].toUpperCase()
-                : undefined,
-              counterparty: line.trim(),
-              category: detectCategory(line, amount),
-            });
-          }
-        } catch {
-          logger.warn('Failed to parse transaction from line:', line);
-        }
-      }
-    }
-
-    if (transactions.length === 0) {
-      throw new Error('No valid transactions found in PDF');
-    }
-
-    return transactions;
-  } catch (error) {
-    logger.error('Error processing PDF:', error);
-    throw new Error(
-      error instanceof Error
-        ? `Failed to process PDF: ${error.message}`
-        : 'Failed to process PDF file'
-    );
-  }
-};
-
 // Main processing function
 export const processFile = async (
   buffer: Buffer,
@@ -249,8 +172,7 @@ export const processFile = async (
         transactions = await processExcel(buffer);
         break;
       case 'application/pdf':
-        transactions = await processPDF(buffer);
-        break;
+        return { error: 'PDF_PROCESSING_ON_SERVER_ONLY' };
       default:
         return { error: 'UNSUPPORTED_FILE_TYPE' };
     }
@@ -277,4 +199,4 @@ export const processFile = async (
       error: error instanceof Error ? error.message : 'UNKNOWN_ERROR',
     };
   }
-}; 
+};
