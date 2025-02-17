@@ -23,7 +23,7 @@ import {
   Line,
 } from 'recharts';
 import { AnalysisResult, Recommendation, Category } from '@/types';
-import { formatAmount } from '@/utils/formatters';
+import { formatAmount } from '@/utils';
 
 type RecommendationAccordionProps = {
   recommendation: Recommendation;
@@ -168,13 +168,6 @@ interface AnalysisResultsProps {
 }
 
 type ValueType = string | number | Array<string | number>;
-
-const formatter = (value: number, currency?: string) => {
-  const formattedValue = formatAmount(Math.abs(value), currency, {
-    maximumFractionDigits: 0,
-  });
-  return value >= 0 ? `+${formattedValue}` : `-${formattedValue}`;
-};
 
 export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   result,
