@@ -1,5 +1,6 @@
-import ExcelJS from 'exceljs';
 import { parse as csvParse } from 'csv-parse/sync';
+import ExcelJS from 'exceljs';
+import pdfParse from 'pdf-parse';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
 
@@ -22,202 +23,37 @@ const detectCategory = (description: string, amount: number): string => {
   return 'Other';
 };
 
-// Enhanced column patterns for better detection
-const columnPatterns = {
-  date: [
-    'date',
-    'transaction date',
-    'posted date',
-    'trans date',
-    'posting date',
-    'payment date',
-  ],
-  description: [
-    'description',
-    'details',
-    'transaction',
-    'narrative',
-    'particulars',
-    'memo',
-    'note',
-    'reference',
-    'payee',
-    'merchant',
-  ],
-  amount: ['amount', 'value', 'sum', 'total', 'payment', 'transaction amount'],
-  debit: ['debit', 'withdrawal', 'expense', 'paid out'],
-  credit: ['credit', 'deposit', 'income', 'paid in'],
-  currency: ['currency', 'iso code', 'curr', 'ccy'],
-};
-
-// Currency symbols and their corresponding ISO codes
-const currencySymbols = new Map([
-  ['$', 'USD'],
-  ['€', 'EUR'],
-  ['£', 'GBP'],
-  ['¥', 'JPY'],
-  ['₹', 'INR'],
-  ['₽', 'RUB'],
-  ['₣', 'CHF'],
-  ['A$', 'AUD'],
-  ['C$', 'CAD'],
-]);
-
-// Helper to find best matching column for each field
-const findBestMatchingColumn = (
-  headers: string[],
-  patterns: string[]
-): number | null => {
-  const matches = headers.map((header, index) => {
-    if (!header) return { index, score: 0 };
-    const headerLower = header.toLowerCase().trim();
-    const score = patterns.reduce((maxScore, pattern) => {
-      if (headerLower === pattern) return 1; // Exact match
-      if (headerLower.includes(pattern)) return 0.8; // Partial match
-      return maxScore;
-    }, 0);
-    return { index, score };
-  });
-
-  const bestMatch = matches.reduce(
-    (best, current) => (current.score > best.score ? current : best),
-    { index: -1, score: 0 }
-  );
-
-  return bestMatch.score > 0 ? bestMatch.index : null;
-};
-
-// Helper to detect currency from amount string
-const detectCurrencyFromAmount = (amount: string): string | null => {
-  const match = amount.match(/^[^0-9-]*([^0-9]*)/);
-  if (match && match[1]) {
-    const symbol = match[1].trim();
-    return currencySymbols.get(symbol) || null;
-  }
-  return null;
-};
-
-// Process CSV file with enhanced column detection
+// Process CSV file
 const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
   try {
-    logger.debug('Starting enhanced CSV processing');
+    logger.debug('Starting CSV processing');
     const content = buffer.toString();
 
-    // Detect delimiter from first line
-    const firstLine = content.split('\n')[0];
-    const delimiter =
-      [',', ';', '\t'].find((d) => firstLine.includes(d)) || ',';
-
-    // Parse CSV with basic settings
     const records = csvParse(content, {
       columns: true,
       skip_empty_lines: true,
       trim: true,
-      delimiter,
     });
 
     if (records.length === 0) {
       throw new Error('No records found in CSV file');
     }
 
-    // Get headers and find column mappings
-    const headers = Object.keys(records[0]);
-    const columnMap = {
-      date: findBestMatchingColumn(headers, columnPatterns.date),
-      description: findBestMatchingColumn(headers, columnPatterns.description),
-      amount: findBestMatchingColumn(headers, columnPatterns.amount),
-      debit: findBestMatchingColumn(headers, columnPatterns.debit),
-      credit: findBestMatchingColumn(headers, columnPatterns.credit),
-      currency: findBestMatchingColumn(headers, columnPatterns.currency),
-    };
-
-    if (columnMap.date === null) {
-      throw new Error('Could not find date column');
-    }
-
-    if (
-      columnMap.amount === null &&
-      (columnMap.debit === null || columnMap.credit === null)
-    ) {
-      throw new Error('Could not find amount or debit/credit columns');
-    }
-
-    // Try to detect currency if not explicitly specified
-    let defaultCurrency: string | null = null;
-    if (columnMap.currency === null) {
-      // Sample first 10 records to detect currency
-      const sampleSize = Math.min(10, records.length);
-      const currenciesFound = new Set<string>();
-
-      for (let i = 0; i < sampleSize; i++) {
-        const record = records[i];
-        const amountStr =
-          columnMap.amount !== null
-            ? record[headers[columnMap.amount]]
-            : record[headers[columnMap.credit!]] ||
-              record[headers[columnMap.debit!]];
-
-        if (typeof amountStr === 'string') {
-          const detectedCurrency = detectCurrencyFromAmount(amountStr);
-          if (detectedCurrency) {
-            currenciesFound.add(detectedCurrency);
-          }
-        }
-      }
-
-      // Only set defaultCurrency if exactly one currency was found
-      if (currenciesFound.size === 1) {
-        defaultCurrency = Array.from(currenciesFound)[0];
-      }
-    }
-
-    // Process records
     const transactions = records
       .map((record: any) => {
         try {
-          // Get date
-          const date = record[headers[columnMap.date!]];
-          if (!date) return null;
-
-          // Get amount
-          let amount: number;
-          if (columnMap.amount !== null) {
-            const amountStr = record[headers[columnMap.amount]].toString();
-            amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
-          } else {
-            const debit = parseFloat(
-              record[headers[columnMap.debit!]]
-                ?.toString()
-                .replace(/[^0-9.-]/g, '') || '0'
-            );
-            const credit = parseFloat(
-              record[headers[columnMap.credit!]]
-                ?.toString()
-                .replace(/[^0-9.-]/g, '') || '0'
-            );
-            amount = credit - debit;
-          }
-
-          if (isNaN(amount)) return null;
-
-          // Get description
-          const description =
-            columnMap.description !== null
-              ? record[headers[columnMap.description]]?.toString() || ''
-              : '';
-
-          // Get currency
-          let currency =
-            columnMap.currency !== null
-              ? record[headers[columnMap.currency]]?.toString()
-              : defaultCurrency || undefined;
+          const amount = parseFloat(record.amount);
+          if (!record.date || isNaN(amount)) return null;
 
           return {
-            date: date.toString(),
+            date: record.date.toString(),
             amount,
-            currency,
-            counterparty: description,
-            category: detectCategory(description, amount),
+            currency: record.currency,
+            counterparty: record.description || record.counterparty || '',
+            category: detectCategory(
+              record.description || record.counterparty || '',
+              amount
+            ),
           } as Transaction;
         } catch (error) {
           logger.warn('Skipping invalid record:', record, error);
@@ -246,193 +82,55 @@ const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
 const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   try {
     const workbook = new ExcelJS.Workbook();
-
-    // Create a readable stream from buffer
+    
     const stream = require('stream');
     const bufferStream = new stream.PassThrough();
     bufferStream.end(buffer);
-
-    // Load workbook from stream
+    
     await workbook.xlsx.read(bufferStream);
-
-    // Try to find a worksheet with transaction data
-    const worksheet =
-      workbook.worksheets.find((ws) => {
-        const firstRow = ws.getRow(1).values as string[];
-        const columnMap = {
-          date: findBestMatchingColumn(firstRow, columnPatterns.date),
-          amount: findBestMatchingColumn(firstRow, columnPatterns.amount),
-          debit: findBestMatchingColumn(firstRow, columnPatterns.debit),
-          credit: findBestMatchingColumn(firstRow, columnPatterns.credit),
-        };
-        return (
-          columnMap.date !== null &&
-          (columnMap.amount !== null ||
-            (columnMap.debit !== null && columnMap.credit !== null))
-        );
-      }) || workbook.worksheets[0];
-
+    
+    const worksheet = workbook.worksheets[0];
     if (!worksheet) {
       throw new Error('No worksheet found in Excel file');
     }
 
-    // Get headers and find column mappings
-    const headers = (worksheet.getRow(1).values as string[]).map(
-      (h) => h?.toString().trim() || ''
-    );
-    const columnMap = {
-      date: findBestMatchingColumn(headers, columnPatterns.date),
-      description: findBestMatchingColumn(headers, columnPatterns.description),
-      amount: findBestMatchingColumn(headers, columnPatterns.amount),
-      debit: findBestMatchingColumn(headers, columnPatterns.debit),
-      credit: findBestMatchingColumn(headers, columnPatterns.credit),
-      currency: findBestMatchingColumn(headers, columnPatterns.currency),
-    };
-
-    if (columnMap.date === null) {
-      throw new Error('Could not find date column in Excel file');
-    }
-
-    if (
-      columnMap.amount === null &&
-      (columnMap.debit === null || columnMap.credit === null)
-    ) {
-      throw new Error('Could not find amount or debit/credit columns');
-    }
-
-    // Try to detect currency if not explicitly specified
-    let defaultCurrency: string | null = null;
-    if (columnMap.currency === null) {
-      // Sample first 10 rows to detect currency
-      const sampleSize = Math.min(10, worksheet.rowCount);
-      const currenciesFound = new Set<string>();
-
-      for (let i = 2; i <= sampleSize; i++) {
-        const row = worksheet.getRow(i);
-        const values = row.values as any[];
-        if (!values || values.length === 0) continue;
-
-        const amountStr =
-          columnMap.amount !== null
-            ? values[columnMap.amount]?.toString()
-            : values[columnMap.credit!]?.toString() ||
-              values[columnMap.debit!]?.toString();
-
-        if (typeof amountStr === 'string') {
-          const detectedCurrency = detectCurrencyFromAmount(amountStr);
-          if (detectedCurrency) {
-            currenciesFound.add(detectedCurrency);
-          }
-        }
-      }
-
-      // Only set defaultCurrency if exactly one currency was found
-      if (currenciesFound.size === 1) {
-        defaultCurrency = Array.from(currenciesFound)[0];
-      }
-    }
-
     const transactions: Transaction[] = [];
-    let isHeaderRow = false;
 
-    // Process rows
+    const headers = worksheet.getRow(1).values as string[];
+    const dateIndex = headers.findIndex((h) =>
+      h?.toString().toLowerCase().includes('date')
+    );
+    const amountIndex = headers.findIndex((h) =>
+      h?.toString().toLowerCase().includes('amount')
+    );
+    const descriptionIndex = headers.findIndex(
+      (h) =>
+        h?.toString().toLowerCase().includes('description') ||
+        h?.toString().toLowerCase().includes('counterparty')
+    );
+    const currencyIndex = headers.findIndex((h) =>
+      h?.toString().toLowerCase().includes('currency')
+    );
+
     worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return; // Skip first header row
+      if (rowNumber === 1) return;
 
       try {
         const values = row.values as any[];
-        if (!values || values.length === 0) return; // Skip empty rows
+        const date = values[dateIndex];
+        const amount = parseFloat(values[amountIndex]);
+        const description = values[descriptionIndex]?.toString() || '';
+        const currency = values[currencyIndex]?.toString();
 
-        // Check if this is a header row in the middle of data
-        const rowStr = values.join(' ').toLowerCase();
-        if (
-          rowStr.includes('date') &&
-          (rowStr.includes('amount') ||
-            rowStr.includes('debit') ||
-            rowStr.includes('credit'))
-        ) {
-          isHeaderRow = true;
-          return;
+        if (date && !isNaN(amount)) {
+          transactions.push({
+            date: date.toString(),
+            amount,
+            currency,
+            counterparty: description,
+            category: detectCategory(description, amount),
+          });
         }
-
-        if (isHeaderRow) {
-          isHeaderRow = false;
-          return;
-        }
-
-        // Get date
-        const dateValue = values[columnMap.date!];
-        if (!dateValue) return; // Skip rows without date
-
-        // Convert date to YYYY-MM-DD format
-        let dateStr: string;
-        if (dateValue instanceof Date) {
-          dateStr = dateValue.toISOString().split('T')[0];
-        } else {
-          const date = new Date(dateValue.toString());
-          if (isNaN(date.getTime())) {
-            return; // Skip invalid dates
-          }
-          dateStr = date.toISOString().split('T')[0];
-        }
-
-        // Get amount
-        let amount: number;
-        if (columnMap.amount !== null) {
-          const amountValue = values[columnMap.amount];
-          if (typeof amountValue === 'number') {
-            amount = amountValue;
-          } else {
-            const amountStr = amountValue?.toString() || '';
-            amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
-          }
-        } else {
-          const debitValue = values[columnMap.debit!];
-          const creditValue = values[columnMap.credit!];
-
-          const debit =
-            typeof debitValue === 'number'
-              ? debitValue
-              : parseFloat(
-                  debitValue?.toString().replace(/[^0-9.-]/g, '') || '0'
-                );
-
-          const credit =
-            typeof creditValue === 'number'
-              ? creditValue
-              : parseFloat(
-                  creditValue?.toString().replace(/[^0-9.-]/g, '') || '0'
-                );
-
-          amount = credit - debit;
-        }
-
-        if (isNaN(amount)) return; // Skip invalid amounts
-
-        // Get description
-        const description =
-          columnMap.description !== null && values[columnMap.description]
-            ? values[columnMap.description].toString().trim()
-            : '';
-
-        // Get currency
-        let currency =
-          columnMap.currency !== null && values[columnMap.currency]
-            ? values[columnMap.currency].toString().trim()
-            : defaultCurrency || undefined;
-
-        // Convert currency symbol to code if needed
-        if (currency && currencySymbols.has(currency)) {
-          currency = currencySymbols.get(currency)!;
-        }
-
-        transactions.push({
-          date: dateStr,
-          amount,
-          currency,
-          counterparty: description,
-          category: detectCategory(description, amount),
-        });
       } catch (error) {
         logger.warn('Skipping invalid row:', rowNumber, error);
       }
@@ -441,11 +139,6 @@ const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
     if (transactions.length === 0) {
       throw new Error('No valid transactions found in Excel file');
     }
-
-    // Sort transactions by date
-    transactions.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
 
     return transactions;
   } catch (error) {
@@ -458,28 +151,130 @@ const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   }
 };
 
+// Process PDF file
+const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
+  try {
+    logger.debug('Starting PDF processing');
+
+    if (!buffer || buffer.length === 0) {
+      throw new Error('Empty or invalid PDF buffer provided');
+    }
+
+    if (buffer.slice(0, 5).toString() !== '%PDF-') {
+      throw new Error('Invalid PDF format: missing PDF signature');
+    }
+
+    let data;
+    try {
+      data = await pdfParse(buffer);
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? `Failed to parse PDF: ${error.message}`
+          : 'Failed to parse PDF file'
+      );
+    }
+
+    const text = data.text;
+    if (!text || text.trim().length === 0) {
+      throw new Error('No text content found in PDF');
+    }
+
+    const lines = text.split('\n').filter((line) => line.trim());
+    const transactions: Transaction[] = [];
+
+    const dateRegex = /\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b/;
+    const amountRegex = /\$?\s*-?\d+(?:,\d{3})*(?:\.\d{2})?/;
+    const currencyRegex = /(?:USD|EUR|GBP|JPY|RUB)/i;
+
+    for (const line of lines) {
+      const dateMatch = line.match(dateRegex);
+      const amountMatch = line.match(amountRegex);
+      const currencyMatch = line.match(currencyRegex);
+
+      if (dateMatch && amountMatch) {
+        try {
+          const amount = parseFloat(amountMatch[0].replace(/[$,]/g, ''));
+          if (!isNaN(amount)) {
+            transactions.push({
+              date: dateMatch[0],
+              amount,
+              currency: currencyMatch
+                ? currencyMatch[0].toUpperCase()
+                : undefined,
+              counterparty: line.trim(),
+              category: detectCategory(line, amount),
+            });
+          }
+        } catch {
+          logger.warn('Failed to parse transaction from line:', line);
+        }
+      }
+    }
+
+    if (transactions.length === 0) {
+      throw new Error('No valid transactions found in PDF');
+    }
+
+    return transactions;
+  } catch (error) {
+    logger.error('Error processing PDF:', error);
+    throw new Error(
+      error instanceof Error
+        ? `Failed to process PDF: ${error.message}`
+        : 'Failed to process PDF file'
+    );
+  }
+};
+
 // Main processing function
 export const processFile = async (
   buffer: Buffer,
   mimeType: string
-): Promise<Transaction[]> => {
+): Promise<{ transactions?: Transaction[]; error?: string }> => {
   if (!buffer || !(buffer instanceof Buffer)) {
-    throw new Error('Invalid file content provided');
+    return { error: 'INVALID_FILE_CONTENT' };
   }
 
   logger.debug('Processing file with mime type:', mimeType);
 
   try {
+    let transactions: Transaction[];
+
     switch (mimeType) {
       case 'text/csv':
-        return await processCSV(buffer);
+        transactions = await processCSV(buffer);
+        break;
       case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-        return await processExcel(buffer);
+        transactions = await processExcel(buffer);
+        break;
+      case 'application/pdf':
+        transactions = await processPDF(buffer);
+        break;
       default:
-        throw new Error(`Unsupported file type: ${mimeType}`);
+        return { error: 'UNSUPPORTED_FILE_TYPE' };
     }
+
+    // Validate transactions
+    const isValid = transactions.every((transaction) => {
+      return (
+        transaction.date &&
+        !isNaN(transaction.amount) &&
+        transaction.currency &&
+        transaction.counterparty !== undefined &&
+        transaction.category !== undefined
+      );
+    });
+
+    if (!isValid) {
+      return { error: 'INVALID_TRANSACTION_DATA' };
+    }
+
+    return { transactions };
   } catch (error) {
     logger.error('Error processing file:', error);
-    throw error;
+    return {
+      error: error instanceof Error ? error.message : 'UNKNOWN_ERROR',
+    };
   }
-};
+}; 
