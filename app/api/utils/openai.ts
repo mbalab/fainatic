@@ -97,4 +97,4 @@ ${csvData}`,
     logger.error('Error in GPT-4 analysis:', error);
     throw error;
   }
-};
+}; 
