@@ -24,6 +24,13 @@ const nextConfig = {
       net: false,
       tls: false,
     };
+
+    // Исключаем тестовые файлы pdf-parse из сборки
+    config.module.rules.push({
+      test: /node_modules\/pdf-parse\/test/,
+      use: 'null-loader',
+    });
+
     return config;
   },
 };
