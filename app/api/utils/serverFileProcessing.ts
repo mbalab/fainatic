@@ -31,7 +31,10 @@ export const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
             amount,
             currency: record.currency || 'USD',
             counterparty: record.description || record.counterparty || '',
-            category: detectCategory(record.description || record.counterparty || '', amount),
+            category: detectCategory(
+              record.description || record.counterparty || '',
+              amount
+            ),
           } as Transaction;
         } catch (error) {
           logger.warn('Skipping invalid record:', record, error);
@@ -48,7 +51,9 @@ export const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
   } catch (error) {
     logger.error('Error processing CSV file:', error);
     throw new Error(
-      error instanceof Error ? `Failed to process CSV: ${error.message}` : 'Failed to process CSV file'
+      error instanceof Error
+        ? `Failed to process CSV: ${error.message}`
+        : 'Failed to process CSV file'
     );
   }
 };
@@ -57,13 +62,13 @@ export const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
 export const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   try {
     const workbook = new ExcelJS.Workbook();
-    
+
     const stream = require('stream');
     const bufferStream = new stream.PassThrough();
     bufferStream.end(buffer);
-    
+
     await workbook.xlsx.read(bufferStream);
-    
+
     const worksheet = workbook.worksheets[0];
     if (!worksheet) {
       throw new Error('No worksheet found in Excel file');
@@ -73,12 +78,20 @@ export const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
 
     // Get header row
     const headers = worksheet.getRow(1).values as string[];
-    const dateIndex = headers.findIndex((h) => h?.toString().toLowerCase().includes('date'));
-    const amountIndex = headers.findIndex((h) => h?.toString().toLowerCase().includes('amount'));
-    const descriptionIndex = headers.findIndex(
-      (h) => h?.toString().toLowerCase().includes('description') || h?.toString().toLowerCase().includes('counterparty')
+    const dateIndex = headers.findIndex((h) =>
+      h?.toString().toLowerCase().includes('date')
     );
-    const currencyIndex = headers.findIndex((h) => h?.toString().toLowerCase().includes('currency'));
+    const amountIndex = headers.findIndex((h) =>
+      h?.toString().toLowerCase().includes('amount')
+    );
+    const descriptionIndex = headers.findIndex(
+      (h) =>
+        h?.toString().toLowerCase().includes('description') ||
+        h?.toString().toLowerCase().includes('counterparty')
+    );
+    const currencyIndex = headers.findIndex((h) =>
+      h?.toString().toLowerCase().includes('currency')
+    );
 
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // Skip header row
@@ -112,7 +125,9 @@ export const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   } catch (error) {
     logger.error('Error processing Excel file:', error);
     throw new Error(
-      error instanceof Error ? `Failed to process Excel: ${error.message}` : 'Failed to process Excel file'
+      error instanceof Error
+        ? `Failed to process Excel: ${error.message}`
+        : 'Failed to process Excel file'
     );
   }
 };
@@ -135,7 +150,9 @@ export const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
       data = await pdfParse(buffer);
     } catch (error) {
       throw new Error(
-        error instanceof Error ? `Failed to parse PDF: ${error.message}` : 'Failed to parse PDF file'
+        error instanceof Error
+          ? `Failed to parse PDF: ${error.message}`
+          : 'Failed to parse PDF file'
       );
     }
 
@@ -182,13 +199,18 @@ export const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
   } catch (error) {
     logger.error('Error processing PDF:', error);
     throw new Error(
-      error instanceof Error ? `Failed to process PDF: ${error.message}` : 'Failed to process PDF file'
+      error instanceof Error
+        ? `Failed to process PDF: ${error.message}`
+        : 'Failed to process PDF file'
     );
   }
 };
 
 // Main processing function
-export const processFile = async (buffer: Buffer, mimeType: string): Promise<Transaction[]> => {
+export const processFile = async (
+  buffer: Buffer,
+  mimeType: string
+): Promise<Transaction[]> => {
   if (!buffer || !(buffer instanceof Buffer)) {
     throw new Error('Invalid file content provided');
   }
@@ -219,11 +241,16 @@ const detectCategory = (description: string, amount: number): string => {
   const lowerDesc = description.toLowerCase();
 
   if (amount > 0) return 'Income';
-  if (lowerDesc.includes('salary') || lowerDesc.includes('payroll')) return 'Income';
-  if (lowerDesc.includes('amazon') || lowerDesc.includes('shop')) return 'Shopping';
-  if (lowerDesc.includes('uber') || lowerDesc.includes('lyft')) return 'Transport';
-  if (lowerDesc.includes('restaurant') || lowerDesc.includes('cafe')) return 'Food';
-  if (lowerDesc.includes('netflix') || lowerDesc.includes('spotify')) return 'Entertainment';
+  if (lowerDesc.includes('salary') || lowerDesc.includes('payroll'))
+    return 'Income';
+  if (lowerDesc.includes('amazon') || lowerDesc.includes('shop'))
+    return 'Shopping';
+  if (lowerDesc.includes('uber') || lowerDesc.includes('lyft'))
+    return 'Transport';
+  if (lowerDesc.includes('restaurant') || lowerDesc.includes('cafe'))
+    return 'Food';
+  if (lowerDesc.includes('netflix') || lowerDesc.includes('spotify'))
+    return 'Entertainment';
 
   return 'Other';
 };
