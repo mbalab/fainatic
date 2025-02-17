@@ -257,20 +257,21 @@ const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
     await workbook.xlsx.read(bufferStream);
 
     // Try to find a worksheet with transaction data
-    const worksheet = workbook.worksheets.find((ws) => {
-      const firstRow = ws.getRow(1).values as string[];
-      const columnMap = {
-        date: findBestMatchingColumn(firstRow, columnPatterns.date),
-        amount: findBestMatchingColumn(firstRow, columnPatterns.amount),
-        debit: findBestMatchingColumn(firstRow, columnPatterns.debit),
-        credit: findBestMatchingColumn(firstRow, columnPatterns.credit),
-      };
-      return (
-        columnMap.date !== null &&
-        (columnMap.amount !== null ||
-          (columnMap.debit !== null && columnMap.credit !== null))
-      );
-    }) || workbook.worksheets[0];
+    const worksheet =
+      workbook.worksheets.find((ws) => {
+        const firstRow = ws.getRow(1).values as string[];
+        const columnMap = {
+          date: findBestMatchingColumn(firstRow, columnPatterns.date),
+          amount: findBestMatchingColumn(firstRow, columnPatterns.amount),
+          debit: findBestMatchingColumn(firstRow, columnPatterns.debit),
+          credit: findBestMatchingColumn(firstRow, columnPatterns.credit),
+        };
+        return (
+          columnMap.date !== null &&
+          (columnMap.amount !== null ||
+            (columnMap.debit !== null && columnMap.credit !== null))
+        );
+      }) || workbook.worksheets[0];
 
     if (!worksheet) {
       throw new Error('No worksheet found in Excel file');
@@ -389,15 +390,21 @@ const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
         } else {
           const debitValue = values[columnMap.debit!];
           const creditValue = values[columnMap.credit!];
-          
-          const debit = typeof debitValue === 'number' 
-            ? debitValue 
-            : parseFloat(debitValue?.toString().replace(/[^0-9.-]/g, '') || '0');
-            
-          const credit = typeof creditValue === 'number'
-            ? creditValue
-            : parseFloat(creditValue?.toString().replace(/[^0-9.-]/g, '') || '0');
-            
+
+          const debit =
+            typeof debitValue === 'number'
+              ? debitValue
+              : parseFloat(
+                  debitValue?.toString().replace(/[^0-9.-]/g, '') || '0'
+                );
+
+          const credit =
+            typeof creditValue === 'number'
+              ? creditValue
+              : parseFloat(
+                  creditValue?.toString().replace(/[^0-9.-]/g, '') || '0'
+                );
+
           amount = credit - debit;
         }
 
@@ -437,7 +444,9 @@ const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
     }
 
     // Sort transactions by date
-    transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    transactions.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
 
     return transactions;
   } catch (error) {
@@ -455,8 +464,14 @@ const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
   try {
     logger.debug('Starting PDF processing');
 
+    // Validate input
     if (!buffer || buffer.length === 0) {
       throw new Error('Empty or invalid PDF buffer provided');
+    }
+
+    // Check if buffer is a valid PDF (check for PDF magic number)
+    if (buffer.slice(0, 5).toString() !== '%PDF-') {
+      throw new Error('Invalid PDF format: missing PDF signature');
     }
 
     // Extract text from PDF
@@ -504,7 +519,9 @@ const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
 
     // Get header line and try to determine column positions
     const headerLine = lines[startIndex];
-    const headerParts = headerLine.split(/\s{2,}/).map((part) => part.trim().toLowerCase());
+    const headerParts = headerLine
+      .split(/\s{2,}/)
+      .map((part) => part.trim().toLowerCase());
 
     // Find column indices
     const columnIndices = {
@@ -545,10 +562,11 @@ const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
       for (let i = 1; i <= sampleSize; i++) {
         const line = lines[startIndex + i];
         const parts = line.split(/\s{2,}/).map((part) => part.trim());
-        
-        const amountPart = columnIndices.amount !== -1
-          ? parts[columnIndices.amount]
-          : parts[columnIndices.credit] || parts[columnIndices.debit];
+
+        const amountPart =
+          columnIndices.amount !== -1
+            ? parts[columnIndices.amount]
+            : parts[columnIndices.credit] || parts[columnIndices.debit];
 
         if (amountPart) {
           const detectedCurrency = detectCurrencyFromAmount(amountPart);
@@ -583,7 +601,10 @@ const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
         const parts = line.split(/\s{2,}/).map((part) => part.trim());
 
         // Skip if we don't have enough parts
-        if (parts.length < Math.max(...Object.values(columnIndices).filter((i) => i !== -1))) {
+        if (
+          parts.length <
+          Math.max(...Object.values(columnIndices).filter((i) => i !== -1))
+        ) {
           continue;
         }
 
@@ -615,7 +636,9 @@ const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
 
         // Get description
         const description =
-          columnIndices.description !== -1 ? parts[columnIndices.description] : '';
+          columnIndices.description !== -1
+            ? parts[columnIndices.description]
+            : '';
 
         // Get currency
         let currency =
@@ -646,9 +669,14 @@ const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
     }
 
     // Sort transactions by date
-    transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    transactions.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
 
-    logger.debug('Successfully processed PDF transactions:', transactions.length);
+    logger.debug(
+      'Successfully processed PDF transactions:',
+      transactions.length
+    );
     return transactions;
   } catch (error) {
     logger.error('Error processing PDF:', error);
