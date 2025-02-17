@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
     logger.error('Error in paid analysis:', error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Failed to analyze data',
+        error:
+          error instanceof Error ? error.message : 'Failed to analyze data',
       },
       { status: 500 }
     );

@@ -48,12 +48,12 @@ const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
 // Process Excel file
 const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   const workbook = new ExcelJS.Workbook();
-  
+
   // Create a readable stream from buffer
   const stream = require('stream');
   const bufferStream = new stream.PassThrough();
   bufferStream.end(buffer);
-  
+
   // Load workbook from stream
   await workbook.xlsx.read(bufferStream);
 
