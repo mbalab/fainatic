@@ -49,12 +49,11 @@ const nextConfig = {
 
     return config;
   },
-  experimental: {
-    // Increase timeout for chunk loading
-    pageLoadTimeout: 60,
-    // Enable streaming
-    serverActions: true,
-  },
+  // Increase chunk loading timeout
+  staticPageGenerationTimeout: 120,
+  // Increase page generation timeout
+  distDir: '.next',
+  poweredByHeader: false,
 };
 
 module.exports = withPWA(nextConfig);
