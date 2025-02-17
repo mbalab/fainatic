@@ -396,7 +396,18 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         'Amount',
                       ]}
                     />
-                    <Bar dataKey="amount" fill="#0FB300" />
+                    <Bar 
+                      dataKey="amount" 
+                      fill="#0FB300"
+                      radius={[4, 4, 0, 0]}
+                      filter="url(#shadow)"
+                    >
+                      <defs>
+                        <filter id="shadow" height="200%">
+                          <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.2"/>
+                        </filter>
+                      </defs>
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
@@ -542,7 +553,18 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         'Amount',
                       ]}
                     />
-                    <Bar dataKey="amount" fill="#FF008C" />
+                    <Bar 
+                      dataKey="amount" 
+                      fill="#FF008C"
+                      radius={[4, 4, 0, 0]}
+                      filter="url(#shadow2)"
+                    >
+                      <defs>
+                        <filter id="shadow2" height="200%">
+                          <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.2"/>
+                        </filter>
+                      </defs>
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
