@@ -39,9 +39,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         return;
       }
 
+      // Validate PDF files
+      if (file.type === 'application/pdf') {
+        // Check if it's not an empty file
+        if (file.size === 0) {
+          onError(new Error('PDF file is empty'));
+          return;
+        }
+      }
+
       setIsProcessing(true);
       try {
-        logger.debug('Processing file:', file.name);
+        logger.debug('Processing file:', file.name, 'type:', file.type);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -57,6 +66,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         }
 
         const { transactions } = await response.json();
+
+        if (!transactions || transactions.length === 0) {
+          throw new Error('No transactions found in file');
+        }
 
         logger.debug(
           'File processed successfully:',

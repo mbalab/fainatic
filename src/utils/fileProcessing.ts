@@ -455,12 +455,33 @@ const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
   try {
     logger.debug('Starting PDF processing');
 
+    if (!buffer || buffer.length === 0) {
+      throw new Error('Empty or invalid PDF buffer provided');
+    }
+
     // Extract text from PDF
-    const data = await pdfParse(buffer);
+    let data;
+    try {
+      data = await pdfParse(buffer);
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? `Failed to parse PDF: ${error.message}`
+          : 'Failed to parse PDF file'
+      );
+    }
+
     const text = data.text;
+    if (!text || text.trim().length === 0) {
+      throw new Error('No text content found in PDF');
+    }
 
     // Split text into lines and remove empty ones
     const lines = text.split('\n').filter((line) => line.trim());
+
+    if (lines.length === 0) {
+      throw new Error('No content lines found in PDF');
+    }
 
     // Try to find the start of transactions by looking for header-like rows
     let startIndex = -1;
