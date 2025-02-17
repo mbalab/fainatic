@@ -115,9 +115,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           </Box>
         ) : (
           <>
-            <CloudUploadIcon
-              sx={{ fontSize: 48, color: '#0037FF', mb: 2 }}
-            />
+            <CloudUploadIcon sx={{ fontSize: 48, color: '#0037FF', mb: 2 }} />
             <Typography variant="h6" gutterBottom>
               Drag & drop your bank statement here
             </Typography>

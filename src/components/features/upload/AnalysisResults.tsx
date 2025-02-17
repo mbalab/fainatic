@@ -387,6 +387,11 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               <Box height={300}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={summary.income.trends.monthly}>
+                    <defs>
+                      <filter id="income-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.1"/>
+                      </filter>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -400,14 +405,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       dataKey="amount" 
                       fill="#0FB300"
                       radius={[4, 4, 0, 0]}
-                      filter="url(#shadow)"
-                    >
-                      <defs>
-                        <filter id="shadow" height="200%">
-                          <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.2"/>
-                        </filter>
-                      </defs>
-                    </Bar>
+                      filter="url(#income-shadow)"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
@@ -544,6 +543,11 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               <Box height={300}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={summary.expenses.trends.monthly}>
+                    <defs>
+                      <filter id="expenses-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.1"/>
+                      </filter>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -557,14 +561,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       dataKey="amount" 
                       fill="#FF008C"
                       radius={[4, 4, 0, 0]}
-                      filter="url(#shadow2)"
-                    >
-                      <defs>
-                        <filter id="shadow2" height="200%">
-                          <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.2"/>
-                        </filter>
-                      </defs>
-                    </Bar>
+                      filter="url(#expenses-shadow)"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
