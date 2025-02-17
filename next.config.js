@@ -10,7 +10,7 @@ const nextConfig = {
       ...config.resolve.fallback,
       fs: false,
     };
-    
+
     // Optimize chunks
     config.optimization = {
       ...config.optimization,
@@ -36,8 +36,9 @@ const nextConfig = {
           lib: {
             test: /[\\/]node_modules[\\/]/,
             name(module) {
-              const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1];
-              return `lib.${packageName.replace('@', '')}`;
+              if (!module.context) return 'lib';
+              const match = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
+              return `lib.${match ? match[1].replace('@', '') : 'vendor'}`;
             },
             priority: 30,
             minChunks: 1,
