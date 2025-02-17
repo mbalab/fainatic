@@ -6,6 +6,15 @@ import { Box, Button, Typography, CircularProgress } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#0037FF',
+    },
+  },
+});
 
 interface FileUploadProps {
   onUploadComplete: (transactions: Transaction[]) => void;
@@ -82,44 +91,57 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   });
 
   return (
-    <Box
-      {...getRootProps()}
-      sx={{
-        border: '2px dashed',
-        borderColor: isDragActive ? 'primary.main' : 'grey.300',
-        borderRadius: 2,
-        p: 3,
-        textAlign: 'center',
-        bgcolor: isDragActive ? 'action.hover' : 'background.paper',
-        transition: 'all 0.2s ease-in-out',
-        '&:hover': {
-          borderColor: 'primary.main',
-          bgcolor: 'action.hover',
-        },
-      }}
-    >
-      <input {...getInputProps()} />
-      {isProcessing ? (
-        <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-          <CircularProgress />
-          <Typography>Processing file...</Typography>
-        </Box>
-      ) : (
-        <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-          <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main' }} />
-          <Typography variant="h6" component="div">
-            {isDragActive
-              ? 'Drop the file here'
-              : 'Drag and drop a file here or click to select'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Supported formats: CSV, XLSX, PDF, PNG, JPG (max 10MB)
-          </Typography>
-          <Button variant="contained" onClick={open} sx={{ mt: 2 }}>
-            Select File
-          </Button>
-        </Box>
-      )}
-    </Box>
+    <ThemeProvider theme={theme}>
+      <Box
+        {...getRootProps()}
+        sx={{
+          border: '2px dashed',
+          borderColor: isDragActive ? '#0037FF' : 'grey.300',
+          borderRadius: 2,
+          p: 3,
+          textAlign: 'center',
+          bgcolor: isDragActive ? 'rgba(0, 55, 255, 0.04)' : 'background.paper',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            borderColor: '#0037FF',
+            bgcolor: 'rgba(0, 55, 255, 0.04)',
+          },
+        }}
+      >
+        <input {...getInputProps()} />
+        {isProcessing ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <>
+            <CloudUploadIcon
+              sx={{ fontSize: 48, color: '#0037FF', mb: 2 }}
+            />
+            <Typography variant="h6" gutterBottom>
+              Drag & drop your bank statement here
+            </Typography>
+            <Typography color="textSecondary" gutterBottom>
+              or
+            </Typography>
+            <Button
+              onClick={open}
+              variant="contained"
+              sx={{
+                bgcolor: '#0037FF',
+                '&:hover': {
+                  bgcolor: 'rgba(0, 55, 255, 0.9)',
+                },
+              }}
+            >
+              Browse Files
+            </Button>
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
+              Supported formats: CSV, XLSX, PDF, PNG, JPG
+            </Typography>
+          </>
+        )}
+      </Box>
+    </ThemeProvider>
   );
 };

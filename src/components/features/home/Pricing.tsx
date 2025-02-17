@@ -36,7 +36,7 @@ export const Pricing = () => {
     <div className="py-24 sm:py-32 bg-gray-50">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-base font-semibold leading-7 text-blue-600">
+          <h2 className="text-base font-semibold leading-7 text-[#0037FF]">
             Pricing
           </h2>
           <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
@@ -49,7 +49,7 @@ export const Pricing = () => {
               key={tier.id}
               className={`flex flex-col justify-between rounded-3xl bg-white p-8 ring-1 xl:p-10 ${
                 tier.highlighted
-                  ? 'ring-2 ring-blue-600 shadow-xl'
+                  ? 'ring-2 ring-[#0037FF] shadow-xl'
                   : 'ring-1 ring-gray-200'
               }`}
             >
@@ -73,7 +73,7 @@ export const Pricing = () => {
                   {tier.features.map((feature) => (
                     <li key={feature} className="flex gap-x-3">
                       <svg
-                        className="h-6 w-5 flex-none text-blue-600"
+                        className="h-6 w-5 flex-none text-[#0037FF]"
                         viewBox="0 0 20 20"
                         fill="currentColor"
                         aria-hidden="true"
@@ -93,8 +93,8 @@ export const Pricing = () => {
                 href={tier.ctaLink}
                 className={`mt-8 block rounded-md px-3 py-2 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
                   tier.highlighted
-                    ? 'bg-blue-600 text-white hover:bg-blue-500 focus-visible:outline-blue-600'
-                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                    ? 'bg-[#0037FF] text-white hover:bg-[#0037FF]/90 focus-visible:outline-[#0037FF]'
+                    : 'bg-[#0037FF]/10 text-[#0037FF] hover:bg-[#0037FF]/20'
                 }`}
               >
                 {tier.cta}

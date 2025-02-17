@@ -2,7 +2,6 @@ import sharp from 'sharp';
 import ExcelJS from 'exceljs';
 import { createWorker } from 'tesseract.js';
 import { parse as csvParse } from 'csv-parse/sync';
-import pdfParse from 'pdf-parse';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
 
@@ -28,6 +27,51 @@ const detectCategory = (description: string, amount: number): string => {
   return 'Other';
 };
 
+// Helper to find column indices based on common patterns
+const findColumnIndices = (headers: string[]) => {
+  const datePatterns = ['date', 'day', 'transaction_date', 'payment_date'];
+  const amountPatterns = [
+    'amount',
+    'sum',
+    'total',
+    'debit',
+    'credit',
+    'payment',
+    'transaction_amount',
+  ];
+  const descriptionPatterns = [
+    'description',
+    'desc',
+    'narrative',
+    'details',
+    'memo',
+    'note',
+    'reference',
+    'payee',
+    'counterparty',
+    'merchant',
+  ];
+
+  const findIndex = (patterns: string[]) => {
+    const index = headers.findIndex((h) => {
+      if (!h) return false;
+      const header = h.toString().toLowerCase().trim();
+      return patterns.some((pattern) => header.includes(pattern));
+    });
+    return index === -1 ? null : index;
+  };
+
+  return {
+    dateIndex: findIndex(datePatterns),
+    amountIndices: {
+      single: findIndex(amountPatterns),
+      debit: findIndex(['debit', 'debit', 'expense']),
+      credit: findIndex(['credit', 'credit', 'income']),
+    },
+    descriptionIndex: findIndex(descriptionPatterns),
+  };
+};
+
 // Process CSV file
 const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
   const content = buffer.toString();
@@ -50,50 +94,83 @@ const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
 
 // Process Excel file
 const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
-  const worksheet = workbook.worksheets[0];
-  const transactions: Transaction[] = [];
+  try {
+    const workbook = new ExcelJS.Workbook();
 
-  // Get header row
-  const headers = worksheet.getRow(1).values as string[];
-  const dateIndex = headers.findIndex((h) => h?.toLowerCase().includes('date'));
-  const amountIndex = headers.findIndex((h) =>
-    h?.toLowerCase().includes('amount')
-  );
-  const descriptionIndex = headers.findIndex(
-    (h) =>
-      h?.toLowerCase().includes('description') ||
-      h?.toLowerCase().includes('counterparty')
-  );
+    // Create a readable stream from buffer
+    const stream = require('stream');
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(buffer);
 
-  // Process rows
-  worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return; // Skip header row
+    // Load workbook from stream
+    await workbook.xlsx.read(bufferStream);
 
-    const values = row.values as any[];
-    const date = values[dateIndex];
-    const amount = parseFloat(values[amountIndex]);
-    const description = values[descriptionIndex]?.toString() || '';
+    // Try to find a worksheet with transaction data
+    const worksheet =
+      workbook.worksheets.find((ws) => {
+        const firstRow = ws.getRow(1).values as string[];
+        const indices = findColumnIndices(firstRow);
+        return (
+          indices.dateIndex !== null &&
+          (indices.amountIndices.single !== null ||
+            (indices.amountIndices.debit !== null &&
+              indices.amountIndices.credit !== null))
+        );
+      }) || workbook.worksheets[0];
 
-    if (date && !isNaN(amount)) {
-      transactions.push({
-        date: date.toString(),
-        amount,
-        currency: DEFAULT_CURRENCY,
-        counterparty: description,
-        category: detectCategory(description, amount),
-      });
-    }
-  });
+    const transactions: Transaction[] = [];
 
-  return transactions;
+    // Get header row
+    const headers = worksheet.getRow(1).values as string[];
+    const dateIndex = headers.findIndex((h) =>
+      h?.toLowerCase().includes('date')
+    );
+    const amountIndex = headers.findIndex((h) =>
+      h?.toLowerCase().includes('amount')
+    );
+    const descriptionIndex = headers.findIndex(
+      (h) =>
+        h?.toLowerCase().includes('description') ||
+        h?.toLowerCase().includes('counterparty')
+    );
+
+    // Process rows
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip header row
+
+      const values = row.values as any[];
+      const date = values[dateIndex];
+      const amount = parseFloat(values[amountIndex]);
+      const description = values[descriptionIndex]?.toString() || '';
+
+      if (date && !isNaN(amount)) {
+        transactions.push({
+          date: date.toString(),
+          amount,
+          currency: DEFAULT_CURRENCY,
+          counterparty: description,
+          category: detectCategory(description, amount),
+        });
+      }
+    });
+
+    return transactions;
+  } catch (error) {
+    logger.error('Error processing Excel file:', error);
+    throw error;
+  }
 };
 
 // Process PDF file
 const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
-  const { text } = await pdfParse(buffer);
-  return extractTransactionsFromText(text);
+  try {
+    const pdfParse = (await import('pdf-parse')).default;
+    const { text } = await pdfParse(buffer);
+    return extractTransactionsFromText(text);
+  } catch (error) {
+    logger.error('Error processing PDF:', error);
+    throw new Error('Failed to process PDF file');
+  }
 };
 
 // Process image file

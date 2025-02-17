@@ -30,7 +30,7 @@ export const Benefits = () => {
     <div className="py-24 sm:py-32 bg-white">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-base font-semibold leading-7 text-blue-600">
+          <h2 className="text-base font-semibold leading-7 text-[#0037FF]">
             What You&apos;ll Get
           </h2>
           <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
@@ -52,7 +52,7 @@ export const Benefits = () => {
                     {benefit.features.map((feature) => (
                       <li key={feature} className="flex gap-x-3">
                         <svg
-                          className="h-6 w-5 flex-none text-blue-600"
+                          className="h-6 w-5 flex-none text-[#0037FF]"
                           viewBox="0 0 20 20"
                           fill="currentColor"
                           aria-hidden="true"

@@ -4,8 +4,5 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "env": {
-    "OPENAI_API_KEY": "@openai_api_key"
-  }
+  "regions": ["iad1"]
 }

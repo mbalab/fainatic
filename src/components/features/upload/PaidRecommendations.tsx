@@ -107,7 +107,7 @@ const RecommendationCard: React.FC<{
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
+                      className="text-[#0037FF] hover:underline"
                     >
                       {link.title}
                     </a>
