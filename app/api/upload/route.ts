@@ -3,6 +3,9 @@ import { processFile } from '@/utils/fileProcessing';
 import { processFile as processServerFile } from '../utils/serverFileProcessing';
 import { logger } from '@/utils/logger';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function POST(request: NextRequest) {
@@ -25,11 +28,12 @@ export async function POST(request: NextRequest) {
     logger.debug('Processing file:', file.name, 'type:', file.type);
 
     const buffer = await file.arrayBuffer();
-    
+
     // Use server-side processing for PDFs, client-side for other formats
-    const transactions = file.type === 'application/pdf'
-      ? await processServerFile(Buffer.from(buffer), file.type)
-      : await processFile(Buffer.from(buffer), file.type);
+    const transactions =
+      file.type === 'application/pdf'
+        ? await processServerFile(Buffer.from(buffer), file.type)
+        : await processFile(Buffer.from(buffer), file.type);
 
     // Validate transactions
     const isValid = transactions.every((transaction) => {
