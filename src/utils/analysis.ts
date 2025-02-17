@@ -98,25 +98,6 @@ const calculateMonthlyTrends = (transactions: Transaction[]) => {
     }));
 };
 
-// Helper to calculate weekly trends
-const calculateWeeklyTrends = (transactions: Transaction[]) => {
-  const weeklyAmounts = new Map<string, number>();
-
-  transactions.forEach((transaction) => {
-    const date = parseISO(transaction.date);
-    const weekKey = format(date, 'yyyy-ww'); // Get year and week number
-    const currentAmount = weeklyAmounts.get(weekKey) || 0;
-    weeklyAmounts.set(weekKey, currentAmount + transaction.amount);
-  });
-
-  return Array.from(weeklyAmounts.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([week, amount]) => ({
-      week: week.split('-')[1], // Only show week number
-      amount: Math.abs(amount),
-    }));
-};
-
 // Helper to calculate weekly cash flow
 const calculateWeeklyCashFlow = (transactions: Transaction[]) => {
   const weeklyAmounts = new Map<string, number>();

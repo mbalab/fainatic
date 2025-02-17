@@ -23,7 +23,6 @@ import {
   Line,
 } from 'recharts';
 import { AnalysisResult, Recommendation, Category } from '@/types';
-import { TooltipProps } from 'recharts';
 
 type RecommendationAccordionProps = {
   recommendation: Recommendation;
@@ -168,7 +167,6 @@ interface AnalysisResultsProps {
 }
 
 type ValueType = string | number | Array<string | number>;
-type NameType = string | number;
 
 const formatter = (value: number) => {
   return value >= 0
