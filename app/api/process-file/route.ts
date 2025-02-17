@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processFile } from '@/utils/serverFileProcessing';
+import { processFile } from '../utils/serverFileProcessing';
 import { logger } from '@/utils/logger';
 
 export const runtime = 'nodejs';
