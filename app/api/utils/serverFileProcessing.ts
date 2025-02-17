@@ -171,15 +171,10 @@ const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
       throw new Error('Invalid PDF format: missing PDF signature');
     }
 
-    // Extract text from PDF with explicit options to prevent test file usage
+    // Extract text from PDF
     let data;
     try {
-      data = await pdfParse(buffer, {
-        version: 'v2.0.0',
-        max: 0,
-        pagerender: null,
-        password: '',
-      });
+      data = await pdfParse(buffer);
     } catch (error) {
       throw new Error(
         error instanceof Error
