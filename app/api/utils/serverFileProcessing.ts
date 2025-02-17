@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import ExcelJS from 'exceljs';
 import { createWorker } from 'tesseract.js';
 import { parse as csvParse } from 'csv-parse/sync';
+import pdfParse from 'pdf-parse';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
 
@@ -155,6 +156,49 @@ const extractTransactionsFromText = (text: string): Transaction[] => {
   return transactions;
 };
 
+// Process PDF file
+const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
+  try {
+    logger.debug('Starting PDF processing');
+
+    // Validate input
+    if (!buffer || buffer.length === 0) {
+      throw new Error('Empty or invalid PDF buffer provided');
+    }
+
+    // Check if buffer is a valid PDF (check for PDF magic number)
+    if (buffer.slice(0, 5).toString() !== '%PDF-') {
+      throw new Error('Invalid PDF format: missing PDF signature');
+    }
+
+    // Extract text from PDF
+    let data;
+    try {
+      data = await pdfParse(buffer);
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? `Failed to parse PDF: ${error.message}`
+          : 'Failed to parse PDF file'
+      );
+    }
+
+    const text = data.text;
+    if (!text || text.trim().length === 0) {
+      throw new Error('No text content found in PDF');
+    }
+
+    return extractTransactionsFromText(text);
+  } catch (error) {
+    logger.error('Error processing PDF:', error);
+    throw new Error(
+      error instanceof Error
+        ? `Failed to process PDF: ${error.message}`
+        : 'Failed to process PDF file'
+    );
+  }
+};
+
 // Main processing function
 export const processFile = async (
   buffer: Buffer,
@@ -172,6 +216,8 @@ export const processFile = async (
         return await processCSV(buffer);
       case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
         return await processExcel(buffer);
+      case 'application/pdf':
+        return await processPDF(buffer);
       case 'image/png':
       case 'image/jpeg':
         return await processImage(buffer);
