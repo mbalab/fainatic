@@ -47,7 +47,14 @@ const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
 // Process Excel file
 const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  
+  // Create a readable stream from buffer
+  const stream = require('stream');
+  const bufferStream = new stream.PassThrough();
+  bufferStream.end(buffer);
+  
+  // Load workbook from stream
+  await workbook.xlsx.read(bufferStream);
 
   const worksheet = workbook.worksheets[0];
   const transactions: Transaction[] = [];
@@ -132,7 +139,9 @@ const extractTransactionsFromText = (text: string): Transaction[] => {
           transactions.push({
             date: dateMatch[0],
             amount,
-            currency: currencyMatch ? currencyMatch[0].toUpperCase() : undefined,
+            currency: currencyMatch
+              ? currencyMatch[0].toUpperCase()
+              : undefined,
             counterparty: line.trim(),
             category: detectCategory(line, amount),
           });
@@ -173,4 +182,4 @@ export const processFile = async (
     logger.error('Error processing file:', error);
     throw error;
   }
-}; 
+};

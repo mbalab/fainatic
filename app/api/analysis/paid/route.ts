@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeWithGPT4 } from '../../utils/openai';
-import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
 
 export async function POST(request: NextRequest) {

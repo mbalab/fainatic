@@ -3,7 +3,7 @@ export * from './analysis';
 export interface Transaction {
   date: string;
   amount: number;
-  currency: string;
+  currency?: string;
   counterparty: string;
   category: string;
 }
