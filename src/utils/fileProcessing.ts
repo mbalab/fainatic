@@ -3,9 +3,6 @@ import { parse as csvParse } from 'csv-parse/sync';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
 
-// Common currency for standardization
-const DEFAULT_CURRENCY = 'USD';
-
 // Helper to detect transaction type and assign basic category
 const detectCategory = (description: string, amount: number): string => {
   const lowerDesc = description.toLowerCase();
@@ -25,103 +22,97 @@ const detectCategory = (description: string, amount: number): string => {
   return 'Other';
 };
 
-// Helper to find column indices based on common patterns
-const findColumnIndices = (headers: string[]) => {
-  const datePatterns = ['date', 'day', 'transaction_date', 'payment_date'];
-  const amountPatterns = [
-    'amount',
-    'sum',
-    'total',
-    'debit',
-    'credit',
-    'payment',
-    'transaction_amount',
-  ];
-  const descriptionPatterns = [
+// Enhanced column patterns for better detection
+const columnPatterns = {
+  date: [
+    'date',
+    'transaction date',
+    'posted date',
+    'trans date',
+    'posting date',
+    'payment date',
+  ],
+  description: [
     'description',
-    'desc',
-    'narrative',
     'details',
+    'transaction',
+    'narrative',
+    'particulars',
     'memo',
     'note',
     'reference',
     'payee',
-    'counterparty',
     'merchant',
-  ];
-
-  const findIndex = (patterns: string[]) => {
-    const index = headers.findIndex((h) => {
-      if (!h) return false;
-      const header = h.toString().toLowerCase().trim();
-      return patterns.some((pattern) => header.includes(pattern));
-    });
-    return index === -1 ? null : index;
-  };
-
-  return {
-    dateIndex: findIndex(datePatterns),
-    amountIndices: {
-      single: findIndex(amountPatterns),
-      debit: findIndex(['debit', 'debit', 'expense']),
-      credit: findIndex(['credit', 'credit', 'income']),
-    },
-    descriptionIndex: findIndex(descriptionPatterns),
-  };
+  ],
+  amount: ['amount', 'value', 'sum', 'total', 'payment', 'transaction amount'],
+  debit: ['debit', 'withdrawal', 'expense', 'paid out'],
+  credit: ['credit', 'deposit', 'income', 'paid in'],
+  currency: ['currency', 'iso code', 'curr', 'ccy'],
 };
 
-// Helper to extract amount from various formats
-const extractAmount = (
-  record: any[],
-  indices: ReturnType<typeof findColumnIndices>
-): number => {
-  const { amountIndices } = indices;
+// Currency symbols and their corresponding ISO codes
+const currencySymbols = new Map([
+  ['$', 'USD'],
+  ['€', 'EUR'],
+  ['£', 'GBP'],
+  ['¥', 'JPY'],
+  ['₹', 'INR'],
+  ['₽', 'RUB'],
+  ['₣', 'CHF'],
+  ['A$', 'AUD'],
+  ['C$', 'CAD'],
+]);
 
-  // Try single amount column first
-  if (amountIndices.single !== null && record[amountIndices.single]) {
-    const amount = parseFloat(
-      record[amountIndices.single].toString().replace(/[^-0-9.]/g, '')
-    );
-    if (!isNaN(amount)) return amount;
-  }
+// Helper to find best matching column for each field
+const findBestMatchingColumn = (
+  headers: string[],
+  patterns: string[]
+): number | null => {
+  const matches = headers.map((header, index) => {
+    if (!header) return { index, score: 0 };
+    const headerLower = header.toLowerCase().trim();
+    const score = patterns.reduce((maxScore, pattern) => {
+      if (headerLower === pattern) return 1; // Exact match
+      if (headerLower.includes(pattern)) return 0.8; // Partial match
+      return maxScore;
+    }, 0);
+    return { index, score };
+  });
 
-  // Try debit/credit columns
-  if (
-    amountIndices.debit !== null &&
-    amountIndices.credit !== null &&
-    record[amountIndices.debit] &&
-    record[amountIndices.credit]
-  ) {
-    const debit =
-      parseFloat(
-        record[amountIndices.debit].toString().replace(/[^-0-9.]/g, '')
-      ) || 0;
-    const credit =
-      parseFloat(
-        record[amountIndices.credit].toString().replace(/[^-0-9.]/g, '')
-      ) || 0;
-    return credit - debit;
-  }
+  const bestMatch = matches.reduce(
+    (best, current) => (current.score > best.score ? current : best),
+    { index: -1, score: 0 }
+  );
 
-  throw new Error('Could not find valid amount column');
+  return bestMatch.score > 0 ? bestMatch.index : null;
 };
 
-// Process CSV file
+// Helper to detect currency from amount string
+const detectCurrencyFromAmount = (amount: string): string | null => {
+  const match = amount.match(/^[^0-9-]*([^0-9]*)/);
+  if (match && match[1]) {
+    const symbol = match[1].trim();
+    return currencySymbols.get(symbol) || null;
+  }
+  return null;
+};
+
+// Process CSV file with enhanced column detection
 const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
   try {
-    logger.debug('Starting CSV processing');
+    logger.debug('Starting enhanced CSV processing');
     const content = buffer.toString();
 
-    // Try to detect delimiter
+    // Detect delimiter from first line
     const firstLine = content.split('\n')[0];
     const delimiter =
       [',', ';', '\t'].find((d) => firstLine.includes(d)) || ',';
 
+    // Parse CSV with basic settings
     const records = csvParse(content, {
       columns: true,
       skip_empty_lines: true,
       trim: true,
-      cast: true,
       delimiter,
     });
 
@@ -129,34 +120,104 @@ const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
       throw new Error('No records found in CSV file');
     }
 
-    // Get column indices from headers
+    // Get headers and find column mappings
     const headers = Object.keys(records[0]);
-    const columnIndices = findColumnIndices(headers);
+    const columnMap = {
+      date: findBestMatchingColumn(headers, columnPatterns.date),
+      description: findBestMatchingColumn(headers, columnPatterns.description),
+      amount: findBestMatchingColumn(headers, columnPatterns.amount),
+      debit: findBestMatchingColumn(headers, columnPatterns.debit),
+      credit: findBestMatchingColumn(headers, columnPatterns.credit),
+      currency: findBestMatchingColumn(headers, columnPatterns.currency),
+    };
 
-    if (columnIndices.dateIndex === null) {
+    if (columnMap.date === null) {
       throw new Error('Could not find date column');
     }
 
+    if (
+      columnMap.amount === null &&
+      (columnMap.debit === null || columnMap.credit === null)
+    ) {
+      throw new Error('Could not find amount or debit/credit columns');
+    }
+
+    // Try to detect currency if not explicitly specified
+    let defaultCurrency: string | null = null;
+    if (columnMap.currency === null) {
+      // Sample first 10 records to detect currency
+      const sampleSize = Math.min(10, records.length);
+      const currenciesFound = new Set<string>();
+
+      for (let i = 0; i < sampleSize; i++) {
+        const record = records[i];
+        const amountStr =
+          columnMap.amount !== null
+            ? record[headers[columnMap.amount]]
+            : record[headers[columnMap.credit!]] ||
+              record[headers[columnMap.debit!]];
+
+        if (typeof amountStr === 'string') {
+          const detectedCurrency = detectCurrencyFromAmount(amountStr);
+          if (detectedCurrency) {
+            currenciesFound.add(detectedCurrency);
+          }
+        }
+      }
+
+      // Only set defaultCurrency if exactly one currency was found
+      if (currenciesFound.size === 1) {
+        defaultCurrency = Array.from(currenciesFound)[0];
+      }
+    }
+
+    // Process records
     const transactions = records
       .map((record: any) => {
         try {
-          const amount = extractAmount(Object.values(record), columnIndices);
-          const date = record[headers[columnIndices.dateIndex!]];
+          // Get date
+          const date = record[headers[columnMap.date!]];
+          if (!date) return null;
+
+          // Get amount
+          let amount: number;
+          if (columnMap.amount !== null) {
+            const amountStr = record[headers[columnMap.amount]].toString();
+            amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
+          } else {
+            const debit = parseFloat(
+              record[headers[columnMap.debit!]]
+                ?.toString()
+                .replace(/[^0-9.-]/g, '') || '0'
+            );
+            const credit = parseFloat(
+              record[headers[columnMap.credit!]]
+                ?.toString()
+                .replace(/[^0-9.-]/g, '') || '0'
+            );
+            amount = credit - debit;
+          }
+
+          if (isNaN(amount)) return null;
+
+          // Get description
           const description =
-            columnIndices.descriptionIndex !== null
-              ? record[headers[columnIndices.descriptionIndex]]?.toString()
+            columnMap.description !== null
+              ? record[headers[columnMap.description]]?.toString() || ''
               : '';
 
-          if (!date) {
-            throw new Error('Missing date value');
-          }
+          // Get currency
+          let currency =
+            columnMap.currency !== null
+              ? record[headers[columnMap.currency]]?.toString()
+              : defaultCurrency || undefined;
 
           return {
             date: date.toString(),
             amount,
-            currency: DEFAULT_CURRENCY,
-            counterparty: description || '',
-            category: detectCategory(description || '', amount),
+            currency,
+            counterparty: description,
+            category: detectCategory(description, amount),
           } as Transaction;
         } catch (error) {
           logger.warn('Skipping invalid record:', record, error);
@@ -195,54 +256,173 @@ const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
     await workbook.xlsx.read(bufferStream);
 
     // Try to find a worksheet with transaction data
-    const worksheet =
-      workbook.worksheets.find((ws) => {
-        const firstRow = ws.getRow(1).values as string[];
-        const indices = findColumnIndices(firstRow);
-        return (
-          indices.dateIndex !== null &&
-          (indices.amountIndices.single !== null ||
-            (indices.amountIndices.debit !== null &&
-              indices.amountIndices.credit !== null))
-        );
-      }) || workbook.worksheets[0];
+    const worksheet = workbook.worksheets.find((ws) => {
+      const firstRow = ws.getRow(1).values as string[];
+      const columnMap = {
+        date: findBestMatchingColumn(firstRow, columnPatterns.date),
+        amount: findBestMatchingColumn(firstRow, columnPatterns.amount),
+        debit: findBestMatchingColumn(firstRow, columnPatterns.debit),
+        credit: findBestMatchingColumn(firstRow, columnPatterns.credit),
+      };
+      return (
+        columnMap.date !== null &&
+        (columnMap.amount !== null ||
+          (columnMap.debit !== null && columnMap.credit !== null))
+      );
+    }) || workbook.worksheets[0];
 
     if (!worksheet) {
       throw new Error('No worksheet found in Excel file');
     }
 
-    const transactions: Transaction[] = [];
-
-    // Get column indices from headers
+    // Get headers and find column mappings
     const headers = (worksheet.getRow(1).values as string[]).map(
-      (h) => h?.toString() || ''
+      (h) => h?.toString().trim() || ''
     );
-    const columnIndices = findColumnIndices(headers);
+    const columnMap = {
+      date: findBestMatchingColumn(headers, columnPatterns.date),
+      description: findBestMatchingColumn(headers, columnPatterns.description),
+      amount: findBestMatchingColumn(headers, columnPatterns.amount),
+      debit: findBestMatchingColumn(headers, columnPatterns.debit),
+      credit: findBestMatchingColumn(headers, columnPatterns.credit),
+      currency: findBestMatchingColumn(headers, columnPatterns.currency),
+    };
 
-    if (columnIndices.dateIndex === null) {
+    if (columnMap.date === null) {
       throw new Error('Could not find date column in Excel file');
     }
 
+    if (
+      columnMap.amount === null &&
+      (columnMap.debit === null || columnMap.credit === null)
+    ) {
+      throw new Error('Could not find amount or debit/credit columns');
+    }
+
+    // Try to detect currency if not explicitly specified
+    let defaultCurrency: string | null = null;
+    if (columnMap.currency === null) {
+      // Sample first 10 rows to detect currency
+      const sampleSize = Math.min(10, worksheet.rowCount);
+      const currenciesFound = new Set<string>();
+
+      for (let i = 2; i <= sampleSize; i++) {
+        const row = worksheet.getRow(i);
+        const values = row.values as any[];
+        if (!values || values.length === 0) continue;
+
+        const amountStr =
+          columnMap.amount !== null
+            ? values[columnMap.amount]?.toString()
+            : values[columnMap.credit!]?.toString() ||
+              values[columnMap.debit!]?.toString();
+
+        if (typeof amountStr === 'string') {
+          const detectedCurrency = detectCurrencyFromAmount(amountStr);
+          if (detectedCurrency) {
+            currenciesFound.add(detectedCurrency);
+          }
+        }
+      }
+
+      // Only set defaultCurrency if exactly one currency was found
+      if (currenciesFound.size === 1) {
+        defaultCurrency = Array.from(currenciesFound)[0];
+      }
+    }
+
+    const transactions: Transaction[] = [];
+    let isHeaderRow = false;
+
     // Process rows
     worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return; // Skip header row
+      if (rowNumber === 1) return; // Skip first header row
 
       try {
         const values = row.values as any[];
-        if (!values[columnIndices.dateIndex!]) return; // Skip rows without date
+        if (!values || values.length === 0) return; // Skip empty rows
 
-        const date = values[columnIndices.dateIndex!];
-        const amount = extractAmount(values, columnIndices);
+        // Check if this is a header row in the middle of data
+        const rowStr = values.join(' ').toLowerCase();
+        if (
+          rowStr.includes('date') &&
+          (rowStr.includes('amount') ||
+            rowStr.includes('debit') ||
+            rowStr.includes('credit'))
+        ) {
+          isHeaderRow = true;
+          return;
+        }
+
+        if (isHeaderRow) {
+          isHeaderRow = false;
+          return;
+        }
+
+        // Get date
+        const dateValue = values[columnMap.date!];
+        if (!dateValue) return; // Skip rows without date
+
+        // Convert date to YYYY-MM-DD format
+        let dateStr: string;
+        if (dateValue instanceof Date) {
+          dateStr = dateValue.toISOString().split('T')[0];
+        } else {
+          const date = new Date(dateValue.toString());
+          if (isNaN(date.getTime())) {
+            return; // Skip invalid dates
+          }
+          dateStr = date.toISOString().split('T')[0];
+        }
+
+        // Get amount
+        let amount: number;
+        if (columnMap.amount !== null) {
+          const amountValue = values[columnMap.amount];
+          if (typeof amountValue === 'number') {
+            amount = amountValue;
+          } else {
+            const amountStr = amountValue?.toString() || '';
+            amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
+          }
+        } else {
+          const debitValue = values[columnMap.debit!];
+          const creditValue = values[columnMap.credit!];
+          
+          const debit = typeof debitValue === 'number' 
+            ? debitValue 
+            : parseFloat(debitValue?.toString().replace(/[^0-9.-]/g, '') || '0');
+            
+          const credit = typeof creditValue === 'number'
+            ? creditValue
+            : parseFloat(creditValue?.toString().replace(/[^0-9.-]/g, '') || '0');
+            
+          amount = credit - debit;
+        }
+
+        if (isNaN(amount)) return; // Skip invalid amounts
+
+        // Get description
         const description =
-          columnIndices.descriptionIndex !== null &&
-          values[columnIndices.descriptionIndex]
-            ? values[columnIndices.descriptionIndex].toString()
+          columnMap.description !== null && values[columnMap.description]
+            ? values[columnMap.description].toString().trim()
             : '';
 
+        // Get currency
+        let currency =
+          columnMap.currency !== null && values[columnMap.currency]
+            ? values[columnMap.currency].toString().trim()
+            : defaultCurrency || undefined;
+
+        // Convert currency symbol to code if needed
+        if (currency && currencySymbols.has(currency)) {
+          currency = currencySymbols.get(currency)!;
+        }
+
         transactions.push({
-          date: date.toString(),
+          date: dateStr,
           amount,
-          currency: DEFAULT_CURRENCY,
+          currency,
           counterparty: description,
           category: detectCategory(description, amount),
         });
@@ -254,6 +434,9 @@ const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
     if (transactions.length === 0) {
       throw new Error('No valid transactions found in Excel file');
     }
+
+    // Sort transactions by date
+    transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return transactions;
   } catch (error) {
