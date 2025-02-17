@@ -4,8 +4,7 @@ import ExcelJS from 'exceljs';
 import pdfParse from 'pdf-parse';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
-import { processFile } from '@/utils/fileProcessing';
-import { processPDF } from '../utils/serverFileProcessing';
+import { processFile } from '../utils/serverFileProcessing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -282,7 +281,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Check file size (10MB limit)
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: 'File size exceeds 10MB limit' },
@@ -294,29 +292,17 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Handle PDF files separately on server
-    if (file.type === 'application/pdf') {
-      try {
-        const transactions = await processPDF(buffer);
-        return NextResponse.json({ transactions });
-      } catch (error) {
-        return NextResponse.json(
-          {
-            error: error instanceof Error ? error.message : 'PDF processing failed',
-          },
-          { status: 500 }
-        );
-      }
+    try {
+      const transactions = await processFile(buffer, file.type);
+      return NextResponse.json({ transactions });
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: error instanceof Error ? error.message : 'File processing failed',
+        },
+        { status: 500 }
+      );
     }
-
-    // Process other file types
-    const result = await processFile(buffer, file.type);
-
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
-    }
-
-    return NextResponse.json({ transactions: result.transactions });
   } catch (error) {
     logger.error('Error processing file:', error);
     return NextResponse.json(
