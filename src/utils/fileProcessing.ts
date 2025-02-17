@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { parse as csvParse } from 'csv-parse/sync';
+import pdfParse from 'pdf-parse';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
 
@@ -449,6 +450,195 @@ const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   }
 };
 
+// Process PDF file
+const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
+  try {
+    logger.debug('Starting PDF processing');
+
+    // Extract text from PDF
+    const data = await pdfParse(buffer);
+    const text = data.text;
+
+    // Split text into lines and remove empty ones
+    const lines = text.split('\n').filter((line) => line.trim());
+
+    // Try to find the start of transactions by looking for header-like rows
+    let startIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].toLowerCase();
+      if (
+        line.includes('date') &&
+        (line.includes('amount') ||
+          (line.includes('debit') && line.includes('credit')) ||
+          line.includes('description'))
+      ) {
+        startIndex = i;
+        break;
+      }
+    }
+
+    if (startIndex === -1) {
+      throw new Error('Could not find transaction data in PDF');
+    }
+
+    // Get header line and try to determine column positions
+    const headerLine = lines[startIndex];
+    const headerParts = headerLine.split(/\s{2,}/).map((part) => part.trim().toLowerCase());
+
+    // Find column indices
+    const columnIndices = {
+      date: headerParts.findIndex((part) =>
+        columnPatterns.date.some((pattern) => part.includes(pattern))
+      ),
+      description: headerParts.findIndex((part) =>
+        columnPatterns.description.some((pattern) => part.includes(pattern))
+      ),
+      amount: headerParts.findIndex((part) =>
+        columnPatterns.amount.some((pattern) => part.includes(pattern))
+      ),
+      debit: headerParts.findIndex((part) =>
+        columnPatterns.debit.some((pattern) => part.includes(pattern))
+      ),
+      credit: headerParts.findIndex((part) =>
+        columnPatterns.credit.some((pattern) => part.includes(pattern))
+      ),
+      currency: headerParts.findIndex((part) =>
+        columnPatterns.currency.some((pattern) => part.includes(pattern))
+      ),
+    };
+
+    if (
+      columnIndices.date === -1 ||
+      (columnIndices.amount === -1 &&
+        (columnIndices.debit === -1 || columnIndices.credit === -1))
+    ) {
+      throw new Error('Could not identify required columns in PDF');
+    }
+
+    // Try to detect currency from the first few transaction lines
+    let defaultCurrency: string | null = null;
+    if (columnIndices.currency === -1) {
+      const sampleSize = Math.min(5, lines.length - startIndex - 1);
+      const currenciesFound = new Set<string>();
+
+      for (let i = 1; i <= sampleSize; i++) {
+        const line = lines[startIndex + i];
+        const parts = line.split(/\s{2,}/).map((part) => part.trim());
+        
+        const amountPart = columnIndices.amount !== -1
+          ? parts[columnIndices.amount]
+          : parts[columnIndices.credit] || parts[columnIndices.debit];
+
+        if (amountPart) {
+          const detectedCurrency = detectCurrencyFromAmount(amountPart);
+          if (detectedCurrency) {
+            currenciesFound.add(detectedCurrency);
+          }
+        }
+      }
+
+      if (currenciesFound.size === 1) {
+        defaultCurrency = Array.from(currenciesFound)[0];
+      }
+    }
+
+    const transactions: Transaction[] = [];
+
+    // Process transaction lines
+    for (let i = startIndex + 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Skip lines that look like headers
+      if (
+        line.toLowerCase().includes('date') &&
+        (line.toLowerCase().includes('amount') ||
+          line.toLowerCase().includes('description'))
+      ) {
+        continue;
+      }
+
+      try {
+        const parts = line.split(/\s{2,}/).map((part) => part.trim());
+
+        // Skip if we don't have enough parts
+        if (parts.length < Math.max(...Object.values(columnIndices).filter((i) => i !== -1))) {
+          continue;
+        }
+
+        // Get date
+        const dateStr = parts[columnIndices.date];
+        if (!dateStr) continue;
+
+        // Convert date to YYYY-MM-DD
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) continue;
+        const formattedDate = date.toISOString().split('T')[0];
+
+        // Get amount
+        let amount: number;
+        if (columnIndices.amount !== -1) {
+          const amountStr = parts[columnIndices.amount];
+          amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
+        } else {
+          const debit = parseFloat(
+            parts[columnIndices.debit]?.replace(/[^0-9.-]/g, '') || '0'
+          );
+          const credit = parseFloat(
+            parts[columnIndices.credit]?.replace(/[^0-9.-]/g, '') || '0'
+          );
+          amount = credit - debit;
+        }
+
+        if (isNaN(amount)) continue;
+
+        // Get description
+        const description =
+          columnIndices.description !== -1 ? parts[columnIndices.description] : '';
+
+        // Get currency
+        let currency =
+          columnIndices.currency !== -1
+            ? parts[columnIndices.currency]
+            : defaultCurrency || undefined;
+
+        // Convert currency symbol to code if needed
+        if (currency && currencySymbols.has(currency)) {
+          currency = currencySymbols.get(currency)!;
+        }
+
+        transactions.push({
+          date: formattedDate,
+          amount,
+          currency,
+          counterparty: description,
+          category: detectCategory(description, amount),
+        });
+      } catch (error) {
+        logger.warn('Failed to parse PDF line:', line, error);
+        continue;
+      }
+    }
+
+    if (transactions.length === 0) {
+      throw new Error('No valid transactions found in PDF');
+    }
+
+    // Sort transactions by date
+    transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    logger.debug('Successfully processed PDF transactions:', transactions.length);
+    return transactions;
+  } catch (error) {
+    logger.error('Error processing PDF:', error);
+    throw new Error(
+      error instanceof Error
+        ? `Failed to process PDF: ${error.message}`
+        : 'Failed to process PDF file'
+    );
+  }
+};
+
 // Main processing function
 export const processFile = async (
   buffer: Buffer,
@@ -466,6 +656,8 @@ export const processFile = async (
         return await processCSV(buffer);
       case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
         return await processExcel(buffer);
+      case 'application/pdf':
+        return await processPDF(buffer);
       default:
         throw new Error(`Unsupported file type: ${mimeType}`);
     }
