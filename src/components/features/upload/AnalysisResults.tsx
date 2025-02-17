@@ -23,6 +23,7 @@ import {
   Line,
 } from 'recharts';
 import { AnalysisResult, Recommendation, Category } from '@/types';
+import { formatAmount } from '@/utils/formatters';
 
 type RecommendationAccordionProps = {
   recommendation: Recommendation;
@@ -168,10 +169,11 @@ interface AnalysisResultsProps {
 
 type ValueType = string | number | Array<string | number>;
 
-const formatter = (value: number) => {
-  return value >= 0
-    ? `+$${value.toLocaleString()}`
-    : `-$${Math.abs(value).toLocaleString()}`;
+const formatter = (value: number, currency?: string) => {
+  const formattedValue = formatAmount(Math.abs(value), currency, {
+    maximumFractionDigits: 0,
+  });
+  return value >= 0 ? `+${formattedValue}` : `-${formattedValue}`;
 };
 
 export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
@@ -204,6 +206,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   }
 
   const { summary, reportInfo } = result;
+
+  // Get currency from the first transaction
+  const currency = result.transactions[0]?.currency;
 
   const handlePurchasePremium = () => {
     // TODO: Integration with payment system
@@ -306,7 +311,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       Total transactions
                     </Typography>
                     <Typography variant="h4">
-                      {summary.totalTransactions}
+                      {summary.totalTransactions.toLocaleString()}
                     </Typography>
                   </Card>
                 </Grid>
@@ -316,8 +321,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       Total Income
                     </Typography>
                     <Typography variant="h4" color="#0FB300">
-                      $
-                      {summary.income.total.toLocaleString(undefined, {
+                      {formatAmount(summary.income.total, currency, {
                         maximumFractionDigits: 0,
                       })}
                     </Typography>
@@ -329,8 +333,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       Total Expenses
                     </Typography>
                     <Typography variant="h4" color="#FF008C">
-                      $
-                      {summary.expenses.total.toLocaleString(undefined, {
+                      {formatAmount(summary.expenses.total, currency, {
                         maximumFractionDigits: 0,
                       })}
                     </Typography>
@@ -342,8 +345,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       Average monthly income
                     </Typography>
                     <Typography variant="h4" color="#0FB300">
-                      $
-                      {summary.income.monthlyAverage.toLocaleString(undefined, {
+                      {formatAmount(summary.income.monthlyAverage, currency, {
                         maximumFractionDigits: 0,
                       })}
                     </Typography>
@@ -355,11 +357,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       Average monthly expenses
                     </Typography>
                     <Typography variant="h4" color="#FF008C">
-                      $
-                      {summary.expenses.monthlyAverage.toLocaleString(
-                        undefined,
-                        { maximumFractionDigits: 0 }
-                      )}
+                      {formatAmount(summary.expenses.monthlyAverage, currency, {
+                        maximumFractionDigits: 0,
+                      })}
                     </Typography>
                   </Card>
                 </Grid>
@@ -386,8 +386,19 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={summary.income.trends.monthly}>
                     <defs>
-                      <filter id="income-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.1"/>
+                      <filter
+                        id="income-shadow"
+                        x="-20%"
+                        y="-20%"
+                        width="140%"
+                        height="140%"
+                      >
+                        <feDropShadow
+                          dx="0"
+                          dy="2"
+                          stdDeviation="2"
+                          floodOpacity="0.1"
+                        />
                       </filter>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -395,12 +406,12 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <YAxis />
                     <Tooltip
                       formatter={(value) => [
-                        `$${value.toLocaleString()}`,
+                        formatAmount(value as number, currency),
                         'Amount',
                       ]}
                     />
-                    <Bar 
-                      dataKey="amount" 
+                    <Bar
+                      dataKey="amount"
                       fill="#0FB300"
                       radius={[4, 4, 0, 0]}
                       filter="url(#income-shadow)"
@@ -430,8 +441,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                 </span>
                               )}
                               <span className="font-medium text-[#0FB300]">
-                                $
-                                {category.value.toLocaleString(undefined, {
+                                {formatAmount(category.value, currency, {
                                   maximumFractionDigits: 0,
                                 })}
                               </span>
@@ -448,9 +458,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                     {counterparty.name}
                                   </span>
                                   <span className="text-[#2D3E4F]">
-                                    $
-                                    {counterparty.total.toLocaleString(
-                                      undefined,
+                                    {formatAmount(
+                                      counterparty.total,
+                                      currency,
                                       {
                                         maximumFractionDigits: 0,
                                       }
@@ -489,8 +499,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                 {otherPercentage.toFixed(1)}%
                               </span>
                               <span className="font-medium text-[#0FB300]">
-                                $
-                                {otherTotal.toLocaleString(undefined, {
+                                {formatAmount(otherTotal, currency, {
                                   maximumFractionDigits: 0,
                                 })}
                               </span>
@@ -506,8 +515,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                   {cat.name}
                                 </span>
                                 <span className="text-[#2D3E4F]">
-                                  $
-                                  {cat.value.toLocaleString(undefined, {
+                                  {formatAmount(cat.value, currency, {
                                     maximumFractionDigits: 0,
                                   })}
                                 </span>
@@ -542,8 +550,19 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={summary.expenses.trends.monthly}>
                     <defs>
-                      <filter id="expenses-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.1"/>
+                      <filter
+                        id="expenses-shadow"
+                        x="-20%"
+                        y="-20%"
+                        width="140%"
+                        height="140%"
+                      >
+                        <feDropShadow
+                          dx="0"
+                          dy="2"
+                          stdDeviation="2"
+                          floodOpacity="0.1"
+                        />
                       </filter>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -551,12 +570,12 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <YAxis />
                     <Tooltip
                       formatter={(value) => [
-                        `$${value.toLocaleString()}`,
+                        formatAmount(value as number, currency),
                         'Amount',
                       ]}
                     />
-                    <Bar 
-                      dataKey="amount" 
+                    <Bar
+                      dataKey="amount"
                       fill="#FF008C"
                       radius={[4, 4, 0, 0]}
                       filter="url(#expenses-shadow)"
@@ -607,9 +626,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     />
                     <YAxis
                       tickFormatter={(value) =>
-                        `$${value.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })}`
+                        formatAmount(value as number, currency)
                       }
                       tick={{ fontSize: 12 }}
                       width={80}
@@ -619,7 +636,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         payload[0]?.payload?.date || ''
                       }
                       formatter={(value: ValueType) => [
-                        formatter(value as number),
+                        formatAmount(value as number, currency),
                         'Cash Flow',
                       ]}
                     />
@@ -665,8 +682,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         summary.cashFlow.daily >= 0 ? '#0FB300' : '#FF008C'
                       }
                     >
-                      $
-                      {summary.cashFlow.daily.toLocaleString(undefined, {
+                      {formatAmount(summary.cashFlow.daily, currency, {
                         maximumFractionDigits: 0,
                       })}
                     </Typography>
@@ -683,8 +699,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         summary.cashFlow.monthly >= 0 ? '#0FB300' : '#FF008C'
                       }
                     >
-                      $
-                      {summary.cashFlow.monthly.toLocaleString(undefined, {
+                      {formatAmount(summary.cashFlow.monthly, currency, {
                         maximumFractionDigits: 0,
                       })}
                     </Typography>
@@ -701,8 +716,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         summary.cashFlow.annual >= 0 ? '#0FB300' : '#FF008C'
                       }
                     >
-                      $
-                      {summary.cashFlow.annual.toLocaleString(undefined, {
+                      {formatAmount(summary.cashFlow.annual, currency, {
                         maximumFractionDigits: 0,
                       })}
                     </Typography>
@@ -739,8 +753,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       color={forecast.amount >= 0 ? '#0FB300' : '#FF008C'}
                       sx={{ mt: 1 }}
                     >
-                      $
-                      {forecast.amount.toLocaleString(undefined, {
+                      {formatAmount(forecast.amount, currency, {
                         maximumFractionDigits: 0,
                       })}
                     </Typography>
@@ -870,7 +883,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                           In {forecast.years} years
                         </p>
                         <p className="text-xl font-bold text-gray-900">
-                          ${forecast.amount.toLocaleString()}
+                          {formatAmount(forecast.amount, currency, {
+                            maximumFractionDigits: 0,
+                          })}
                         </p>
                       </div>
                     ))}
