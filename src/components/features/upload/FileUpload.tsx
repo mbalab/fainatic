@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Box, Button, Typography, CircularProgress } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -26,6 +26,60 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onError,
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [fileId, setFileId] = useState<string | null>(null);
+  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [pollInterval]);
+
+  // Poll for file processing status
+  const startPolling = useCallback(
+    (id: string) => {
+      setFileId(id);
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/file/process?file_id=${id}`);
+          
+          if (!response.ok) {
+            if (response.status === 404) {
+              // File was processed and deleted, stop polling
+              clearInterval(interval);
+              setPollInterval(null);
+              setFileId(null);
+              setIsProcessing(false);
+              return;
+            }
+            throw new Error('Processing failed');
+          }
+
+          const data = await response.json();
+          
+          if (data.transactions) {
+            clearInterval(interval);
+            setPollInterval(null);
+            setFileId(null);
+            setIsProcessing(false);
+            onUploadComplete(data.transactions);
+          }
+        } catch (error) {
+          clearInterval(interval);
+          setPollInterval(null);
+          setFileId(null);
+          setIsProcessing(false);
+          onError(error instanceof Error ? error : new Error('Processing failed'));
+        }
+      }, 2000);
+
+      setPollInterval(interval);
+    },
+    [onUploadComplete, onError]
+  );
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -33,60 +87,49 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       const file = acceptedFiles[0];
 
-      // Add file size validation (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         onError(new Error('File size exceeds 10MB limit'));
         return;
       }
 
-      // Validate PDF files
-      if (file.type === 'application/pdf') {
-        // Check if it's not an empty file
-        if (file.size === 0) {
-          onError(new Error('PDF file is empty'));
-          return;
-        }
+      if (file.type === 'application/pdf' && file.size === 0) {
+        onError(new Error('PDF file is empty'));
+        return;
       }
 
       setIsProcessing(true);
       try {
-        logger.debug('Processing file:', file.name, 'type:', file.type);
+        logger.debug('Uploading file:', file.name, 'type:', file.type);
 
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch('/api/upload', {
+        const response = await fetch('/api/file/upload', {
           method: 'POST',
           body: formData,
         });
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to process file');
+          throw new Error(errorData.error || 'Failed to upload file');
         }
 
-        const { transactions } = await response.json();
-
-        if (!transactions || transactions.length === 0) {
-          throw new Error('No transactions found in file');
+        const { file_id } = await response.json();
+        
+        if (!file_id) {
+          throw new Error('No file ID received');
         }
 
-        logger.debug(
-          'File processed successfully:',
-          transactions.length,
-          'transactions found'
-        );
-        onUploadComplete(transactions);
+        startPolling(file_id);
       } catch (error) {
-        logger.error('Error processing file:', error);
+        logger.error('Error uploading file:', error);
+        setIsProcessing(false);
         onError(
           error instanceof Error ? error : new Error('Unknown error occurred')
         );
-      } finally {
-        setIsProcessing(false);
       }
     },
-    [onUploadComplete, onError]
+    [onUploadComplete, onError, startPolling]
   );
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
@@ -100,7 +143,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       'image/*': ['.png', '.jpg', '.jpeg'],
     },
     multiple: false,
-    noClick: true, // Disable click on the entire zone
+    noClick: true,
   });
 
   return (
@@ -123,8 +166,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       >
         <input {...getInputProps()} />
         {isProcessing ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <CircularProgress />
+            <Typography color="textSecondary">
+              {fileId ? 'Processing file...' : 'Uploading file...'}
+            </Typography>
           </Box>
         ) : (
           <>

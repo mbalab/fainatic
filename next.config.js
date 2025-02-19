@@ -37,7 +37,9 @@ const nextConfig = {
             test: /[\\/]node_modules[\\/]/,
             name(module) {
               if (!module.context) return 'lib';
-              const match = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
+              const match = module.context.match(
+                /[\\/]node_modules[\\/](.*?)([\\/]|$)/
+              );
               return `lib.${match ? match[1].replace('@', '') : 'vendor'}`;
             },
             priority: 30,

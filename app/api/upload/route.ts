@@ -33,7 +33,8 @@ export async function POST(req: NextRequest, { params }: { params: {} }) {
     } catch (error) {
       return NextResponse.json(
         {
-          error: error instanceof Error ? error.message : 'File processing failed',
+          error:
+            error instanceof Error ? error.message : 'File processing failed',
         },
         { status: 500 }
       );
@@ -42,7 +43,8 @@ export async function POST(req: NextRequest, { params }: { params: {} }) {
     logger.error('Error processing file:', error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       },
       { status: 500 }
     );
