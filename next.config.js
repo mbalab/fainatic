@@ -11,7 +11,7 @@ const nextConfig = {
   swcMinify: true,
   reactStrictMode: true,
   generateEtags: false,
-  
+
   // Optimize build
   webpack: (config) => {
     config.resolve.fallback = {
@@ -60,17 +60,17 @@ const nextConfig = {
 
     return config;
   },
-  
+
   // Page configuration
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   compress: true,
   generateBuildId: async () => {
     return 'build-' + Date.now();
   },
-  
+
   // Timeouts
   staticPageGenerationTimeout: 120,
-  
+
   // Headers
   async headers() {
     return [
