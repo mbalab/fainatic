@@ -1,12 +1,5 @@
-import {
-  Hero,
-  Features,
-  UploadSection,
-  Benefits,
-  Pricing,
-  FAQ,
-} from '@/components/features/home';
 import type { Metadata } from 'next';
+import { HomePage } from '@/components/features/home/HomePage';
 
 export const metadata: Metadata = {
   title: 'Fainatic - AI-powered Financial Analysis',
@@ -17,15 +10,6 @@ export const metadata: Metadata = {
 export const dynamic = 'force-static';
 export const revalidate = 3600; // revalidate every hour
 
-export default function HomePage() {
-  return (
-    <main className="flex min-h-screen flex-col">
-      <Hero />
-      <Features />
-      <UploadSection />
-      <Benefits />
-      <Pricing />
-      <FAQ />
-    </main>
-  );
+export default function Page() {
+  return <HomePage />;
 }

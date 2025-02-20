@@ -18,66 +18,9 @@ const nextConfig = {
     optimizeCss: true,
   },
 
-  // Optimize build
-  webpack: (config, { dev, isServer }) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-    };
-
-    // Optimize chunks
-    if (!dev && isServer) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          minSize: 20000,
-          maxSize: 70000,
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            framework: {
-              chunks: 'all',
-              name: 'framework',
-              test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
-              priority: 40,
-              enforce: true,
-            },
-            commons: {
-              name: 'commons',
-              minChunks: 2,
-              priority: 20,
-            },
-            lib: {
-              test: /[\\/]node_modules[\\/]/,
-              name(module) {
-                if (!module.context) return 'lib';
-                const match = module.context.match(
-                  /[\\/]node_modules[\\/](.*?)([\\/]|$)/
-                );
-                return `lib.${match ? match[1].replace('@', '') : 'vendor'}`;
-              },
-              priority: 30,
-              minChunks: 1,
-              reuseExistingChunk: true,
-            },
-          },
-        },
-      };
-    }
-
-    return config;
-  },
-
   // Page configuration
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   compress: true,
-  generateBuildId: async () => {
-    return 'build-' + Date.now();
-  },
-
-  // Timeouts
-  staticPageGenerationTimeout: 120,
 
   // Headers
   async headers() {
