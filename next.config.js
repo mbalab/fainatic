@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-});
+// const withPWA = require('next-pwa')({
+//   dest: 'public',
+//   disable: process.env.NODE_ENV === 'development',
+// });
 
 const nextConfig = {
+  output: 'standalone',
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -59,4 +60,4 @@ const nextConfig = {
   poweredByHeader: false,
 };
 
-module.exports = withPWA(nextConfig);
+module.exports = nextConfig;
