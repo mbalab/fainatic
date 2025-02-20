@@ -6,9 +6,13 @@
 
 const nextConfig = {
   output: 'standalone',
-  experimental: {
-    serverActions: true,
-  },
+  distDir: '.next',
+  poweredByHeader: false,
+  swcMinify: true,
+  reactStrictMode: true,
+  generateEtags: false,
+  
+  // Optimize build
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -56,13 +60,47 @@ const nextConfig = {
 
     return config;
   },
-  // Increase chunk loading timeout
+  
+  // Page configuration
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  compress: true,
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
+  },
+  
+  // Timeouts
   staticPageGenerationTimeout: 120,
-  // Increase page generation timeout
-  distDir: '.next',
-  poweredByHeader: false,
-  swcMinify: true,
-  reactStrictMode: true,
+  
+  // Headers
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
