@@ -27,87 +27,6 @@ import {
 import { AnalysisResult, Recommendation, Category, Transaction } from '@/types';
 import { formatAmount } from '@/utils';
 
-type RecommendationAccordionProps = {
-  recommendation: Recommendation;
-};
-
-const RecommendationAccordion = ({
-  recommendation,
-}: RecommendationAccordionProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="border rounded-lg mb-4 border-[#0037FF]">
-      <button
-        className="w-full px-4 py-3 text-left flex justify-between items-center"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div>
-          <h4 className="font-medium text-[#2D3E4F]">{recommendation.title}</h4>
-          <div className="text-sm text-[#0FB300]">
-            +${recommendation.impact.yearly.toLocaleString()} in a year
-          </div>
-        </div>
-        <svg
-          className={`w-5 h-5 transform transition-transform ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="#2D3E4F"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </button>
-      {isOpen && (
-        <div className="px-4 py-3 border-t border-[#0037FF]">
-          <p className="text-[#2D3E4F] opacity-80 mb-4">
-            {recommendation.description}
-          </p>
-          {recommendation.steps.length > 0 && (
-            <div className="mb-4">
-              <h5 className="font-medium text-[#2D3E4F] mb-2">
-                Steps to implement:
-              </h5>
-              <ol className="list-decimal list-inside space-y-2">
-                {recommendation.steps.map((step, index) => (
-                  <li key={index} className="text-[#2D3E4F] opacity-80">
-                    {step}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-          {recommendation.links && recommendation.links.length > 0 && (
-            <div>
-              <h5 className="font-medium text-[#2D3E4F] mb-2">Useful links:</h5>
-              <ul className="space-y-2">
-                {recommendation.links.map((link, index) => (
-                  <li key={index}>
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#0037FF] hover:underline"
-                    >
-                      {link.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
 const CategoryAccordion = ({ category }: { category: Category }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -163,12 +82,11 @@ const CategoryAccordion = ({ category }: { category: Category }) => {
   );
 };
 
-interface AnalysisResultsProps {
+type Props = {
   result: AnalysisResult | null;
   isLoading: boolean;
-  error: string | null;
   transactions: Transaction[];
-}
+};
 
 // Интерфейс для платного анализа
 interface PaidAnalysis {
@@ -180,21 +98,17 @@ interface PaidAnalysis {
   insights: string[];
 }
 
-export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
+export const AnalysisResults: React.FC<Props> = ({
   result,
   isLoading,
-  error,
   transactions,
 }) => {
-  const [isPremiumPurchased, setIsPremiumPurchased] = useState(false);
   const [paidAnalysis, setPaidAnalysis] = useState<PaidAnalysis | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const fetchPaidAnalysis = useCallback(async () => {
     try {
       setIsLoadingAnalysis(true);
-      setAnalysisError(null);
 
       const response = await fetch('/api/analysis/paid', {
         method: 'POST',
@@ -212,9 +126,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       await new Promise((resolve) => setTimeout(resolve, 500));
       setPaidAnalysis(data);
     } catch (error) {
-      setAnalysisError(
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      console.error('Error fetching paid analysis:', error);
     } finally {
       setIsLoadingAnalysis(false);
     }
@@ -309,16 +221,6 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     );
   }
 
-  if (error) {
-    return (
-      <Box p={4}>
-        <Typography color="error" align="center">
-          {error}
-        </Typography>
-      </Box>
-    );
-  }
-
   if (!result) {
     return null;
   }
@@ -336,10 +238,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       // Увеличиваем задержку имитации оплаты до 2 секунд
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      setIsPremiumPurchased(true);
       await fetchPaidAnalysis();
     } catch (error) {
-      setAnalysisError('Ошибка при обработке оплаты');
+      console.error('Error processing payment:', error);
     } finally {
       setIsLoadingAnalysis(false);
     }
@@ -1112,7 +1013,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             AI-анализ и рекомендации
           </Typography>
 
-          {!isPremiumPurchased ? (
+          {!paidAnalysis ? (
             <div className="bg-gradient-to-r from-[#7700FF] to-[#0037FF] text-white p-8 rounded-lg">
               <h3 className="text-2xl font-bold mb-4">
                 Получите персональный AI-анализ
@@ -1211,11 +1112,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                 <div className="flex justify-center items-center py-12">
                   <CircularProgress />
                 </div>
-              ) : analysisError ? (
-                <div className="p-4 bg-red-50 text-red-700 rounded-lg">
-                  {analysisError}
-                </div>
-              ) : paidAnalysis ? (
+              ) : (
                 <>
                   {/* Основные выводы */}
                   <div className="bg-blue-50 p-6 rounded-lg">
@@ -1296,7 +1193,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     )
                   )}
                 </>
-              ) : null}
+              )}
             </div>
           )}
         </CardContent>
