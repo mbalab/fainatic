@@ -1,8 +1,26 @@
-import pdfParse from 'pdf-parse';
-import ExcelJS from 'exceljs';
 import { parse as csvParse } from 'csv-parse/sync';
+import ExcelJS from 'exceljs';
 import { Transaction } from '@/types';
 import { logger } from '@/utils/logger';
+
+// Helper to detect transaction type and assign basic category
+const detectCategory = (description: string, amount: number): string => {
+  const lowerDesc = description.toLowerCase();
+
+  if (amount > 0) return 'Income';
+  if (lowerDesc.includes('salary') || lowerDesc.includes('payroll'))
+    return 'Income';
+  if (lowerDesc.includes('amazon') || lowerDesc.includes('shop'))
+    return 'Shopping';
+  if (lowerDesc.includes('uber') || lowerDesc.includes('lyft'))
+    return 'Transport';
+  if (lowerDesc.includes('restaurant') || lowerDesc.includes('cafe'))
+    return 'Food';
+  if (lowerDesc.includes('netflix') || lowerDesc.includes('spotify'))
+    return 'Entertainment';
+
+  return 'Other';
+};
 
 // Process CSV file
 export const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
@@ -23,18 +41,20 @@ export const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
     const transactions: Transaction[] = records
       .map((record: any) => {
         try {
-          const amount = parseFloat(record.amount);
-          if (!record.date || isNaN(amount)) return null;
+          const amount = parseFloat(record.Amount);
+          const date = record['Started Date']?.split(' ')[0] || record.date;
+
+          if (!date || isNaN(amount)) {
+            logger.warn('Invalid record - missing date or amount:', record);
+            return null;
+          }
 
           return {
-            date: record.date.toString(),
+            date: date,
             amount,
-            currency: record.currency || 'USD',
-            counterparty: record.description || record.counterparty || '',
-            category: detectCategory(
-              record.description || record.counterparty || '',
-              amount
-            ),
+            currency: record.Currency || 'USD',
+            counterparty: record.Description || '',
+            category: detectCategory(record.Description || '', amount),
           } as Transaction;
         } catch (error) {
           logger.warn('Skipping invalid record:', record, error);
@@ -47,6 +67,7 @@ export const processCSV = async (buffer: Buffer): Promise<Transaction[]> => {
       throw new Error('No valid transactions found in CSV file');
     }
 
+    logger.debug('Successfully processed transactions:', transactions.length);
     return transactions;
   } catch (error) {
     logger.error('Error processing CSV file:', error);
@@ -132,80 +153,6 @@ export const processExcel = async (buffer: Buffer): Promise<Transaction[]> => {
   }
 };
 
-// Process PDF file
-export const processPDF = async (buffer: Buffer): Promise<Transaction[]> => {
-  try {
-    logger.debug('Starting PDF processing');
-
-    if (!buffer || buffer.length === 0) {
-      throw new Error('Empty or invalid PDF buffer provided');
-    }
-
-    if (buffer.slice(0, 5).toString() !== '%PDF-') {
-      throw new Error('Invalid PDF format: missing PDF signature');
-    }
-
-    let data;
-    try {
-      data = await pdfParse(buffer);
-    } catch (error) {
-      throw new Error(
-        error instanceof Error
-          ? `Failed to parse PDF: ${error.message}`
-          : 'Failed to parse PDF file'
-      );
-    }
-
-    const text = data.text;
-    if (!text || text.trim().length === 0) {
-      throw new Error('No text content found in PDF');
-    }
-
-    const lines = text.split('\n').filter((line) => line.trim());
-    const transactions: Transaction[] = [];
-
-    const dateRegex = /\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b/;
-    const amountRegex = /\$?\s*-?\d+(?:,\d{3})*(?:\.\d{2})?/;
-    const currencyRegex = /(?:USD|EUR|GBP|JPY|RUB)/i;
-
-    for (const line of lines) {
-      const dateMatch = line.match(dateRegex);
-      const amountMatch = line.match(amountRegex);
-      const currencyMatch = line.match(currencyRegex);
-
-      if (dateMatch && amountMatch) {
-        try {
-          const amount = parseFloat(amountMatch[0].replace(/[$,]/g, ''));
-          if (!isNaN(amount)) {
-            transactions.push({
-              date: dateMatch[0],
-              amount,
-              currency: currencyMatch ? currencyMatch[0].toUpperCase() : 'USD',
-              counterparty: line.trim(),
-              category: detectCategory(line, amount),
-            });
-          }
-        } catch {
-          logger.warn('Failed to parse transaction from line:', line);
-        }
-      }
-    }
-
-    if (transactions.length === 0) {
-      throw new Error('No valid transactions found in PDF');
-    }
-
-    return transactions;
-  } catch (error) {
-    logger.error('Error processing PDF:', error);
-    throw new Error(
-      error instanceof Error
-        ? `Failed to process PDF: ${error.message}`
-        : 'Failed to process PDF file'
-    );
-  }
-};
-
 // Main processing function
 export const processFile = async (
   buffer: Buffer,
@@ -225,8 +172,6 @@ export const processFile = async (
         return await processCSV(buffer);
       case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
         return await processExcel(buffer);
-      case 'application/pdf':
-        return await processPDF(buffer);
       default:
         throw new Error(`Unsupported file type: ${mimeType}`);
     }
@@ -234,23 +179,4 @@ export const processFile = async (
     logger.error('Error processing file:', error);
     throw error;
   }
-};
-
-// Helper to detect transaction type and assign basic category
-const detectCategory = (description: string, amount: number): string => {
-  const lowerDesc = description.toLowerCase();
-
-  if (amount > 0) return 'Income';
-  if (lowerDesc.includes('salary') || lowerDesc.includes('payroll'))
-    return 'Income';
-  if (lowerDesc.includes('amazon') || lowerDesc.includes('shop'))
-    return 'Shopping';
-  if (lowerDesc.includes('uber') || lowerDesc.includes('lyft'))
-    return 'Transport';
-  if (lowerDesc.includes('restaurant') || lowerDesc.includes('cafe'))
-    return 'Food';
-  if (lowerDesc.includes('netflix') || lowerDesc.includes('spotify'))
-    return 'Entertainment';
-
-  return 'Other';
 };

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-export async function POST(req: NextRequest, { params }: { params: {} }) {
+export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;

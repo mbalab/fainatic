@@ -22,6 +22,23 @@ async function ensureTmpDir() {
   }
 }
 
+// Get correct MIME type for file
+function getMimeType(fileName: string, originalType: string): string {
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  
+  if (extension === 'csv') {
+    return 'text/csv';
+  }
+  if (extension === 'xlsx') {
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  }
+  if (extension === 'pdf') {
+    return 'application/pdf';
+  }
+  
+  return originalType;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -54,10 +71,10 @@ export async function POST(req: NextRequest) {
     
     logger.debug('File saved:', fileName);
 
-    // Store file metadata
+    // Store file metadata with correct MIME type
     const metadata = {
       originalName: file.name,
-      mimeType: file.type,
+      mimeType: getMimeType(file.name, file.type),
       size: file.size,
       uploadedAt: new Date().toISOString(),
     };
