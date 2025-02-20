@@ -6,6 +6,9 @@
 
 const nextConfig = {
   output: 'standalone',
+  experimental: {
+    serverActions: true,
+  },
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -58,6 +61,8 @@ const nextConfig = {
   // Increase page generation timeout
   distDir: '.next',
   poweredByHeader: false,
+  swcMinify: true,
+  reactStrictMode: true,
 };
 
 module.exports = nextConfig;
