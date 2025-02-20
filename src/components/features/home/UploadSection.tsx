@@ -99,7 +99,6 @@ export const UploadSection = () => {
           <AnalysisResults
             key={transactions.length}
             result={result}
-            error={error}
             isLoading={isLoading}
             transactions={transactions}
           />
