@@ -12,51 +12,60 @@ const nextConfig = {
   reactStrictMode: true,
   generateEtags: false,
 
+  // App Router configuration
+  experimental: {
+    serverComponentsExternalPackages: ['sharp'],
+    optimizeCss: true,
+    legacyBrowsers: false,
+  },
+
   // Optimize build
-  webpack: (config) => {
+  webpack: (config, { dev, isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
     };
 
     // Optimize chunks
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: {
-        chunks: 'all',
-        minSize: 20000,
-        maxSize: 70000,
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          framework: {
-            chunks: 'all',
-            name: 'framework',
-            test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
-            priority: 40,
-            enforce: true,
-          },
-          commons: {
-            name: 'commons',
-            minChunks: 2,
-            priority: 20,
-          },
-          lib: {
-            test: /[\\/]node_modules[\\/]/,
-            name(module) {
-              if (!module.context) return 'lib';
-              const match = module.context.match(
-                /[\\/]node_modules[\\/](.*?)([\\/]|$)/
-              );
-              return `lib.${match ? match[1].replace('@', '') : 'vendor'}`;
+    if (!dev && isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          minSize: 20000,
+          maxSize: 70000,
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            framework: {
+              chunks: 'all',
+              name: 'framework',
+              test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+              priority: 40,
+              enforce: true,
             },
-            priority: 30,
-            minChunks: 1,
-            reuseExistingChunk: true,
+            commons: {
+              name: 'commons',
+              minChunks: 2,
+              priority: 20,
+            },
+            lib: {
+              test: /[\\/]node_modules[\\/]/,
+              name(module) {
+                if (!module.context) return 'lib';
+                const match = module.context.match(
+                  /[\\/]node_modules[\\/](.*?)([\\/]|$)/
+                );
+                return `lib.${match ? match[1].replace('@', '') : 'vendor'}`;
+              },
+              priority: 30,
+              minChunks: 1,
+              reuseExistingChunk: true,
+            },
           },
         },
-      },
-    };
+      };
+    }
 
     return config;
   },
