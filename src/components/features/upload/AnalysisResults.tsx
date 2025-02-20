@@ -86,6 +86,7 @@ type Props = {
   result: AnalysisResult | null;
   isLoading: boolean;
   transactions: Transaction[];
+  error?: string | null;
 };
 
 // Интерфейс для платного анализа
@@ -102,6 +103,7 @@ export const AnalysisResults: React.FC<Props> = ({
   result,
   isLoading,
   transactions,
+  error,
 }) => {
   const [paidAnalysis, setPaidAnalysis] = useState<PaidAnalysis | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
@@ -217,6 +219,16 @@ export const AnalysisResults: React.FC<Props> = ({
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={4}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+        <Typography color="error" align="center">
+          {error}
+        </Typography>
       </Box>
     );
   }
