@@ -10,7 +10,8 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Fainatic - AI-powered Financial Analysis',
-  description: 'Get smart financial insights from your bank statements with AI analysis',
+  description:
+    'Get smart financial insights from your bank statements with AI analysis',
 };
 
 export const dynamic = 'force-static';

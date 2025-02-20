@@ -11,9 +11,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const TMP_DIR = process.env.NODE_ENV === 'production' 
-  ? join(os.tmpdir(), 'fainatic-uploads') 
-  : join(process.cwd(), 'tmp');
+const TMP_DIR =
+  process.env.NODE_ENV === 'production'
+    ? join(os.tmpdir(), 'fainatic-uploads')
+    : join(process.cwd(), 'tmp');
 
 // Ensure tmp directory exists
 async function ensureTmpDir() {
@@ -29,7 +30,7 @@ async function ensureTmpDir() {
 // Get correct MIME type for file
 function getMimeType(fileName: string, originalType: string): string {
   const extension = fileName.split('.').pop()?.toLowerCase();
-  
+
   if (extension === 'csv') {
     return 'text/csv';
   }
@@ -39,7 +40,7 @@ function getMimeType(fileName: string, originalType: string): string {
   if (extension === 'pdf') {
     return 'application/pdf';
   }
-  
+
   return originalType;
 }
 
@@ -70,9 +71,9 @@ export async function POST(req: NextRequest) {
     // Save file to tmp directory
     const buffer = Buffer.from(await file.arrayBuffer());
     const filePath = join(TMP_DIR, fileName);
-    
+
     await writeFile(filePath, buffer);
-    
+
     logger.debug('File saved:', fileName);
 
     // Store file metadata with correct MIME type
@@ -82,11 +83,8 @@ export async function POST(req: NextRequest) {
       size: file.size,
       uploadedAt: new Date().toISOString(),
     };
-    
-    await writeFile(
-      join(TMP_DIR, `${fileId}.json`),
-      JSON.stringify(metadata)
-    );
+
+    await writeFile(join(TMP_DIR, `${fileId}.json`), JSON.stringify(metadata));
 
     return NextResponse.json({ file_id: fileId });
   } catch (error) {
@@ -98,4 +96,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}
