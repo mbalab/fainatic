@@ -16,7 +16,6 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['sharp'],
     optimizeCss: true,
-    legacyBrowsers: false,
   },
 
   // Optimize build
