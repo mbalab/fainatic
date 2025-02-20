@@ -4,12 +4,16 @@ import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
 import { mkdir } from 'fs/promises';
+import os from 'os';
 
+// Конфигурация для standalone режима
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const TMP_DIR = join(process.cwd(), 'tmp');
+const TMP_DIR = process.env.NODE_ENV === 'production' 
+  ? join(os.tmpdir(), 'fainatic-uploads') 
+  : join(process.cwd(), 'tmp');
 
 // Ensure tmp directory exists
 async function ensureTmpDir() {
